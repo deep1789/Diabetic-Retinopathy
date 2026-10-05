@@ -3,6 +3,7 @@
 \caption{Evidence ablation: the full \mname\ head trained with parts of the evidence tensor removed (zones or lesion classes set to zero everywhere, including in the rule scores). Three seeds (0--2), mean $\pm$ SD, leak-controlled test set. $\Delta$ is the mean QWK difference to the reference. With three seeds and SDs of 0.005--0.02, differences below about 0.01 are not distinguishable from noise.}
 \label{tab:evablate}
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Evidence kept & QWK & $\Delta$QWK & Acc. & ECE \\
@@ -19,5 +20,5 @@ HE only & 0.687$\pm$0.004 & -0.058 & 0.716$\pm$0.005 & 0.067$\pm$0.017 \\
 EX only & 0.630$\pm$0.003 & -0.115 & 0.680$\pm$0.003 & 0.083$\pm$0.009 \\
 SE only & 0.674$\pm$0.009 & -0.071 & 0.697$\pm$0.001 & 0.076$\pm$0.009 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}

@@ -17,6 +17,7 @@ Table~\ref{tab:cost} summarises measured costs on the four-core CPU machine. Tra
 \caption{Model sizes and measured costs (four CPU cores, bfloat16 autocast where applicable).}
 \label{tab:cost}
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llrl@{}}
 \toprule
 Component & Role & Parameters & Measured cost \\
@@ -27,5 +28,5 @@ MLP baselines (B1, B2, B4) & grading & 0.30\,M & seconds per run \\
 Evidence MLP (B3) & grading & 0.016\,M & seconds per run \\
 Evidence-token head (\mname) & grading & 0.14\,M & a few min per run (1 core) \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
