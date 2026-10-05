@@ -1,0 +1,51 @@
+\section{Materials}
+\label{sec:data}
+
+\subsection{The DDR dataset}
+\label{sec:ddr}
+All primary experiments use the DDR dataset (also distributed as OIA-DDR) \citep{li2019ddr}, a general-purpose collection of colour fundus photographs designed for three tasks: DR grading, lesion segmentation and lesion detection. According to the dataset authors, the photographs were collected from many hospitals and acquired with a variety of fundus cameras, which gives the data heterogeneous colour, illumination and field-of-view characteristics (Fig.~\ref{fig:ddr-samples}). We downloaded the complete archive (ten split zip volumes, 15.1~GB) and verified its structure and counts directly from the files: the grading task contains \num{13673} images split into 6835 training, 2733 validation and 4105 test images; the lesion subset contains 757 images (383 / 149 / 225) with four-class pixel-level masks and bounding boxes in Pascal-VOC XML format. The dataset is released under CC BY-NC-SA 4.0, and we use it for non-commercial research with attribution as required.
+
+\paragraph{Grading labels.} Each image carries one of six labels: grades 0 (no DR), 1 (mild), 2 (moderate), 3 (severe), 4 (proliferative DR) and 5 (ungradable owing to poor quality). The label distribution is strongly imbalanced (Table~\ref{tab:ddr}, Fig.~\ref{fig:ddr-stats}a): 46\% of training images are grade~0 and 33\% grade~2, whereas severe DR (grade~3) accounts for only 118 training images (1.7\%). The distribution is nearly identical across the three splits, which suggests stratified assignment. Throughout the paper we use two protocols. The \emph{five-class protocol} (main) restricts grading to gradable images (grades 0--4: 6260 / 2503 / 3759 train / validation / test images), because ordinal reasoning is meaningless for an ungradable photograph; image quality is handled by a separate gate (Section~\ref{sec:quality}). The \emph{six-class protocol} adds the ungradable class as a nominal outcome and is reported for completeness.
+
+\paragraph{Lesion annotations.} For the 757 lesion images, four lesion types are annotated at pixel level: microaneurysms (MA), haemorrhages (HE), hard exudates (EX) and soft exudates (SE). The annotation is dense (Fig.~\ref{fig:ddr-lesions}): after removing duplicates, the training subset contains \num{24671} annotated boxes, of which \num{13419} are exudates, \num{5783} microaneurysms, \num{4739} haemorrhages and 730 soft exudates (the raw training XML files list \num{58200} boxes, because many boxes appear more than once; the validation and test files contain no duplicates). Lesion size spans two orders of magnitude (Fig.~\ref{fig:ddr-stats}c): when sizes are rescaled to the nominal $\approx$1950-pixel native resolution, the median longer box side is about 10~px for microaneurysms and exudates, 26~px for haemorrhages and 47~px for soft exudates, and the 10th percentile is only 3.6--4.7~px for MA, EX and SE. In the resolution used by most deep networks (512 px or lower), a typical microaneurysm therefore occupies one to three pixels. The detection annotations are derived from the same lesions as the masks. Table~\ref{tab:ddr} also lists the number of lesion images in which each class occurs.
+
+\input{tables/ddr_stats}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_ddr_samples.pdf}
+\caption{Sample DDR fundus images for each grade (top row: cropped original; bottom row: after Gaussian-filter preprocessing). Samples are drawn at random from the training split with a fixed seed, subject to the field of view filling the frame; the last column shows an ungradable image. The preprocessing equalises illumination and exposes vessels and lesions, but amplifies border artefacts.}
+\label{fig:ddr-samples}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_ddr_lesions.pdf}
+\caption{Lesion annotations in four DDR training images that contain several lesion types. Top: fundus image at $512\times512$. Middle: ground-truth pixel masks (MA green, HE red, EX yellow, SE blue). Bottom: densest $128\times128$ window magnified three times with the Pascal-VOC bounding boxes (white). Note the very different sizes and densities of lesions between images.}
+\label{fig:ddr-lesions}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_dataset_stats.pdf}
+\caption{Dataset statistics. (a) Grade distribution per split. (b) Number of annotated lesion boxes per class and split (log scale). (c) Distribution of the longer side of lesion boxes in the training set, in approximate native pixels. (d) Lesion burden per image (boxes per image, $\log_{10}$ scale, outliers omitted).}
+\label{fig:ddr-stats}
+\end{figure}
+
+\subsection{Gaussian-filtered APTOS-derived Kaggle set (external test)}
+\label{sec:aptos}
+For an external test of the grading pipeline we use the publicly available ``Diabetic Retinopathy 224$\times$224 Gaussian filtered'' Kaggle dataset \citep{rath2020gaussian}, which contains the labelled training portion of the APTOS 2019 Blindness Detection challenge \citep{aptos2019} after resizing to $224\times224$ and Gaussian-filter normalisation in the style of the Kaggle 2015 winning solution \citep{graham2015kaggle}. It contains \num{3664} PNG images in five folders (No\_DR 1805, Mild 370, Moderate 999, Severe 193, Proliferative\_DR 295; CC0 licence). This set differs from DDR in several ways that make it a demanding test of robustness: it originates from a different population and camera set (Aravind Eye Hospital, India), has a different grade distribution (49\% grade~0, 27\% grade~2), has no lesion annotation and, most importantly, has a resolution of only $224\times224$, which removes microaneurysms and most small haemorrhages (Fig.~\ref{fig:aptos}). We therefore \emph{only} use it for zero-shot grading evaluation of models trained on DDR, and not for segmentation or detection. Because the images are already filtered, we apply the same filter to DDR inputs wherever a model is to be transferred (Section~\ref{sec:prep}).
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=.85\textwidth]{fig_aptos_samples.pdf}
+\caption{Random samples (two per grade) from the Gaussian-filtered $224\times224$ APTOS-derived Kaggle set. The Gaussian filter equalises illumination but also removes most colour information; note that some photographs are non-circular owing to the original acquisition.}
+\label{fig:aptos}
+\end{figure}
+
+\subsection{Preprocessing}
+\label{sec:prep}
+All photographs are processed as follows. (i) \emph{Border cropping}: the bounding box of pixels whose maximum channel exceeds 12 is cropped and the result is zero-padded to a square, which removes the black margins that occupy a variable portion of DDR frames. (ii) \emph{Resizing}: area interpolation to $512\times512$ for the segmentation network and to $256\times256$ for the image embedding. Binary lesion masks are resized with area interpolation of the floating-point mask followed by a threshold of 0.15, which preserves sub-pixel microaneurysms that nearest-neighbour or threshold-at-0.5 resizing would erase; ground-truth boxes undergo exactly the same geometric transform. (iii) \emph{Gaussian filtering} (optional, denoted ``GF''): $I' = 4I - 4\,(G_{\sigma}\!*\!I) + 128$ with $\sigma = 0.045\,s$ (where $s$ is the image side, matching the common $\sigma\approx10$ at $224$ px), followed by a gray fill outside the field of view. This is the same transform used to produce the Kaggle set, and we study its effect in an ablation (Section~\ref{sec:res-seg}).
+
+\subsection{Data splits, leakage and ethics}
+We use the official DDR train/validation/test partition for every task. Model selection (early stopping, thresholds, temperature, conformal calibration) uses validation data only. A subtle point is that the lesion subset is \emph{not} aligned with the grading partition: of the 383 lesion-training images, 275, 100 and 8 belong to the grading training, validation and test partitions, respectively; of the 149 lesion-validation images, 31 are in the grading validation and 118 in the grading test partition; and of the 225 lesion-test images, 152, 12 and 59 are in the grading training, validation and test partitions (Appendix~\ref{app:leak}). Because the segmentation network is fitted on lesion-training images and tuned on lesion-validation images, any grading-test image that belongs to either set would give the lesion branch indirect access to test data. We therefore define a \emph{leak-controlled grading test set} by removing these 126 images (all of which are gradable, grades~1--4), leaving 3633 gradable test images, and report \emph{all} grading test results on this set; results on the full official test partition are given as a sensitivity analysis in Appendix~\ref{app:leak}. Lesion-test images are never used for fitting or selection of the segmentation network, so segmentation and detection results are unaffected. Both datasets are public and de-identified; no new patient data were collected, so institutional review was not required.

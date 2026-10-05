@@ -1,0 +1,67 @@
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{graphicx,booktabs,multirow,array,tabularx,makecell}
+\usepackage[table]{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[expansion=false]{microtype}
+\usepackage[section]{placeins}
+\renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.8}\renewcommand{\textfraction}{0.1}\renewcommand{\floatpagefraction}{0.7}
+\usepackage{lineno}\usepackage{amsthm}
+\newtheorem{proposition}{Proposition}
+\biboptions{round,sort&compress}
+\journal{Medical Image Analysis}
+
+% ---- notation ----
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\ma}{\textsc{MA}}\newcommand{\he}{\textsc{HE}}\newcommand{\ex}{\textsc{EX}}\newcommand{\se}{\textsc{SE}}
+\newcommand{\mname}{LesionRule}
+\graphicspath{{figs/}}
+\input{numbers}
+
+\begin{document}
+\begin{frontmatter}
+\title{Lesion-Grounded Ordinal Grading with Clinical-Rule Consistency and Conformal Referral for Diabetic Retinopathy: Joint Classification, Lesion Segmentation and Lesion Detection on the DDR Dataset}
+\author[inst1]{First Author\corref{cor1}}
+\ead{corresponding.author@example.org}
+\author[inst1]{Second Author}
+\cortext[cor1]{Corresponding author. (Author names, affiliations and e-mail are placeholders to be completed before submission.)}
+\affiliation[inst1]{organization={Department / Institution}, city={City}, country={Country}}
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+\begin{highlights}
+\input{sections/highlights}
+\end{highlights}
+\begin{keyword}
+diabetic retinopathy \sep ordinal classification \sep lesion segmentation \sep lesion detection \sep clinical rule consistency \sep conformal prediction \sep fundus photography
+\end{keyword}
+\end{frontmatter}
+
+\input{sections/intro}
+\input{sections/related}
+\input{sections/data}
+\input{sections/method}
+\input{sections/setup}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/conclusion}
+\input{sections/declarations}
+
+\appendix
+\input{sections/appendix}
+
+\bibliographystyle{elsarticle-harv}
+\bibliography{refs}
+\end{document}

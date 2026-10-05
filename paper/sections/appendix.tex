@@ -1,0 +1,90 @@
+\section{Overlap between lesion and grading partitions, and sensitivity analysis}
+\label{app:leak}
+Table~\ref{tab:overlap} shows how the 757 lesion-annotated images are distributed over the grading partitions, computed by matching file names. The two partitions are not aligned. The 126 grading-test images that also occur in the lesion-training (8) or lesion-validation (118) subsets are removed from the grading test set in all main experiments (leak-controlled test set, 3633 gradable images). Table~\ref{tab:sens} compares the main grading metrics on the leak-controlled and on the full official test partition (3759 gradable images).
+
+\begin{table}[h]
+\centering
+\caption{Number of lesion-subset images (rows) found in each grading partition (columns), by file name.}
+\label{tab:overlap}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Lesion subset & Grading train & Grading valid & Grading test & Total \\
+\midrule
+Lesion train (383) & 275 & 100 & 8 & 383 \\
+Lesion valid (149) & 0 & 31 & 118 & 149 \\
+Lesion test (225) & 152 & 12 & 59 & 223$^{*}$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\footnotesize $^{*}$ Two lesion-test images are not listed in any grading partition.}
+\end{table}
+
+\input{tables/sens}
+
+\section{Hyper-parameters}
+\label{app:hyper}
+\begin{table}[h]
+\centering
+\caption{Hyper-parameters. Values were fixed a priori or tuned on validation data only.}
+\label{tab:hyper}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Component & Parameter & Value \\
+\midrule
+Segmentation & input / crop & $512^2$ full image / $256^2$ crops \\
+ & optimiser, schedule & AdamW, wd $10^{-4}$, one-cycle (max $10^{-3}$, 15\% warm-up) \\
+ & batch, iterations $\times$ epochs & 8 crops, $48\times30$ \\
+ & positive weights (MA,HE,EX,SE) & 20, 6, 6, 8 \\
+ & focal Tversky & $\alpha=0.3$, $\beta=0.7$, $\gamma=0.75$, weight 2 \\
+ & lesion-centred crop probability & 0.7 \\
+ & augmentation & flips, $90^\circ$ rotations, contrast $\times[0.8,1.25]$, brightness $\pm0.08$ \\
+Evidence & grid, zones & $128^2$, 6 (4 quadrants, central disc $r=0.35R$, whole field) \\
+ & soft-count thresholds, temperature & $\tau\in\{0.25,0.5,0.75\}$, $T=0.05$ \\
+ & peak rule & $3\times3$ local maximum, $\tilde P>0.5$ \\
+Grade head & token width, layers, heads, FFN & 64, 2, 4, 128 \\
+ & optimiser & AdamW, wd 0.01, cosine, 60 epochs, batch 128 \\
+ & learning rate & $5\times10^{-4}$ (transformer), $10^{-3}$ (MLPs) \\
+ & soft-label width $\sigma_y$ & 0.5 \\
+ & rule weight $\lambda$, rule slope $s$ & 1, 0.35 \\
+Rules & fitting & Adam (lr 0.05), 400 steps, negative weight 0.5 \\
+Calibration & temperature grid & 26 values in $[0.5,3]$ \\
+Conformal & $\alpha$ & 0.05, 0.1, 0.2 \\
+Detection & seed threshold & $\max(0.6\,t_c,\,0.078)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Properties of the building blocks}
+\label{app:proofs}
+
+\begin{proposition}[Soft counts]
+For every zone $z$, $0\le n^{(\tau)}_{c,z}\le|\Omega_z|$; $n^{(\tau)}_{c,z}$ is non-increasing in $\tau$ and non-decreasing in every entry of $\tilde P_c$; $|\partial n^{(\tau)}_{c,z}/\partial\tilde P_c(u)|\le 1/(4T)$; and as $T\to0$ it converges, for all $u$ with $\tilde P_c(u)\neq\tau$, to the hard count $|\{u\in\Omega_z:\tilde P_c(u)>\tau\}|$.
+\end{proposition}
+\begin{proof}
+Each summand $\sigma((\tilde P_c(u)-\tau)/T)$ lies in $(0,1)$, is decreasing in $\tau$ and increasing in $\tilde P_c(u)$, and has derivative $\sigma'(\cdot)/T\le1/(4T)$ because $\sigma'\le1/4$. Summing over $|\Omega_z|$ terms gives the bounds. As $T\to0$, $\sigma((v-\tau)/T)\to\mathbb 1[v>\tau]$ for $v\ne\tau$.
+\end{proof}
+
+\begin{proposition}[Monotone rules and the rule loss]
+Let $R_k(Z;\theta)$ be defined by Eqs.~\eqref{eq:r1}--\eqref{eq:r4}. (i) $R_k\in(0,1)$ and $R_k$ is non-decreasing in every entry $u_{c,z}$ of the evidence, so additional lesion evidence can only relax a rule. (ii) For $\hat F\in[0,1]^4$, $\mathcal L_{\mathrm{rule}}(\hat F;R)=0$ if and only if $\hat F_k\le R_k$ for all $k$. (iii) $\mathcal L_{\mathrm{rule}}$ is continuously differentiable in $\hat F$ with gradient $\frac12\,\mathrm{ReLU}(\hat F_k-R_k)$, which vanishes exactly on consistent predictions, so consistent predictions are not penalised.
+\end{proposition}
+\begin{proof}
+(i) $a(v;\theta)=\sigma((v-\theta)/s)$ is increasing in $v$ with values in $(0,1)$. Under the product t-norm, $\prod_i a_i$ is increasing in each $a_i$, and the dual $1-\prod_i(1-a_i)$ is increasing as well; compositions of increasing maps are increasing and remain in $(0,1)$. (ii) A sum of squares of non-negative terms is zero exactly if every term vanishes. (iii) $\frac{d}{dx}\mathrm{ReLU}(x)^2=2\,\mathrm{ReLU}(x)$, which is continuous and zero for $x\le0$; the factor $\tfrac14\cdot2=\tfrac12$ follows.
+\end{proof}
+
+\begin{proposition}[Ordinal soft targets]
+For any $\sigma_y>0$ the targets $F^\star_k=\sum_{j\ge k}q_j(y)$ in Eq.~\eqref{eq:softlabel} satisfy $1\ge F^\star_1\ge\dots\ge F^\star_4\ge0$, and $F^\star_k\to\mathbb 1[y\ge k]$ as $\sigma_y\to0$. Consequently the cumulative-link loss with soft targets has the same minimiser as the hard-label loss when $\sigma_y\to0$, and for $\sigma_y>0$ its population minimiser is $\hat F_k=\E[F^\star_k\mid x]$, a monotone sequence.
+\end{proposition}
+\begin{proof}
+$q_j\ge0$ and $\sum_jq_j=1$, so tail sums are non-increasing in $k$ and lie in $[0,1]$. As $\sigma_y\to0$, $q_j(y)\to\mathbb 1[j=y]$ and hence $F^\star_k\to\mathbb 1[y\ge k]$. For each $k$ the binary cross-entropy $-F^\star\log\hat F-(1-F^\star)\log(1-\hat F)$ with soft target $F^\star$ is minimised in expectation by $\hat F=\E[F^\star\mid x]$; monotonicity in $k$ follows from monotonicity of $F^\star_k$ pointwise.
+\end{proof}
+
+\begin{proposition}[Split-conformal coverage]
+Let $(x_i,y_i)_{i=1}^n$ be calibration data and $(x,y)$ a test pair, all exchangeable, and $\hat q_\alpha$ the $\lceil(n+1)(1-\alpha)\rceil$-th smallest of the scores $\varsigma_i=1-\hat p_{y_i}(x_i)$ (set $\hat q_\alpha=\infty$ if the index exceeds $n$). Then $\Pr[y\in\mathcal C_\alpha(x)]\ge1-\alpha$, and if scores are almost surely distinct, $\Pr[y\in\mathcal C_\alpha(x)]\le1-\alpha+1/(n+1)$.
+\end{proposition}
+\begin{proof}
+Since $y\in\mathcal C_\alpha(x)\iff\varsigma_{n+1}:=1-\hat p_y(x)\le\hat q_\alpha$ and the $n+1$ scores are exchangeable, the rank of $\varsigma_{n+1}$ among them is uniform on $\{1,\dots,n+1\}$ when scores are distinct (and stochastically no smaller otherwise). The event $\varsigma_{n+1}\le\hat q_\alpha$ is the event that its rank is at most $m=\lceil(n+1)(1-\alpha)\rceil$, which has probability $m/(n+1)\ge1-\alpha$ and $\le(1-\alpha)+1/(n+1)$.
+\end{proof}
+Note that the guarantee is marginal over the population (not conditional on the grade), requires the calibration half to be disjoint from model selection and temperature fitting (which is why validation is split into halves A and B), and presumes no distribution shift between calibration and test; Section~\ref{sec:res-ext} shows what happens under shift.

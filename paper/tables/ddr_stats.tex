@@ -1,0 +1,29 @@
+\begin{table}[!htbp]
+\centering
+\caption{DDR dataset statistics as verified from the downloaded archive. Top: grading labels per split (G0--G4 = ICDR grades, UG = ungradable). Bottom: lesion subset (unique boxes after duplicate removal; number of images containing each lesion class in parentheses).}
+\label{tab:ddr}
+\small
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+Split & G0 & G1 & G2 & G3 & G4 & UG & Total \\
+\midrule
+Train & 3{,}133 & 315 & 2{,}238 & 118 & 456 & 575 & 6{,}835 \\
+Validation & 1{,}253 & 126 & 895 & 47 & 182 & 230 & 2{,}733 \\
+Test & 1{,}880 & 189 & 1{,}344 & 71 & 275 & 346 & 4{,}105 \\
+\midrule
+All & 6{,}266 & 630 & 4{,}477 & 236 & 913 & 1{,}151 & 13{,}673 \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Lesion split & Images & MA & HE & EX & SE \\
+\midrule
+Train & 383 & 5{,}783 (314) & 4{,}739 (294) & 13{,}419 (245) & 730 (111) \\
+Validation & 149 & 2{,}556 (132) & 1{,}342 (113) & 1{,}920 (70) & 349 (86) \\
+Test & 225 & 2{,}041 (124) & 6{,}457 (194) & 8{,}320 (171) & 214 (42) \\
+\bottomrule
+\end{tabular}
+\end{table}

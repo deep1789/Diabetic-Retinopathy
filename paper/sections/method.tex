@@ -1,0 +1,255 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Problem formulation and notation}
+Let $x\in\R^{H\times W\times 3}$ be a fundus photograph. We consider three coupled tasks on the same input. \emph{Grading} asks for an ordinal grade $y\in\{0,1,2,3,4\}$ (Section~\ref{sec:ddr}). \emph{Segmentation} asks for four binary masks $M_c\in\{0,1\}^{H\times W}$ for lesion classes $c\in\mathcal C=\{\ma,\he,\ex,\se\}$. \emph{Detection} asks for a set of scored boxes $\{(b_j,c_j,s_j)\}$. A segmentation network $f_\phi$ maps the image to lesion probability maps $P=f_\phi(x)\in[0,1]^{4\times H\times W}$; a grading model $g_\psi$ maps the image and the lesion evidence derived from $P$ to cumulative grade probabilities. Table~\ref{tab:notation} lists the main symbols.
+
+\begin{table}[!htbp]
+\centering
+\caption{Main notation.}
+\label{tab:notation}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$x$, $y$ & fundus image, ICDR grade $\in\{0,\dots,4\}$ \\
+$\mathcal C=\{\ma,\he,\ex,\se\}$ & lesion classes \\
+$P=f_\phi(x)\in[0,1]^{4\times H\times W}$ & lesion probability maps from the segmentation network \\
+$\tilde P\in[0,1]^{4\times h\times w}$ & $4\times$ max-pooled maps ($h=w=128$) \\
+$\mathcal Z=\{z_1,\dots,z_6\}$, $\Omega_z$ & retinal zones (4 quadrants, central disc, whole field) and their pixel sets \\
+$n_{c,z}^{(\tau)},\ \pi_{c,z},\ \mu_{c,z}$ & soft counts at threshold $\tau$, number of peaks, maximum probability \\
+$e_{c,z}\in\R^5$, $Z\in\R^{4\times6\times5}$ & evidence vector of $(c,z)$ and the full evidence tensor \\
+$\varphi(x)\in\R^{D}$ & frozen image embedding ($D=1152$) \\
+$s_k$, $\hat F_k=\sigma(s_k)$ & cumulative logit and probability for the event $y\ge k$, $k=1,\dots,4$ \\
+$R_k(Z;\theta)\in[0,1]$ & soft-logic rule score: necessary condition for $y\ge k$ \\
+$\sigma_y$, $\lambda$ & soft-label width, rule-loss weight \\
+$\mathcal C_\alpha(x)$ & conformal prediction set at miscoverage level $\alpha$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Overview}
+Fig.~\ref{fig:arch} shows the overall pipeline. The segmentation network is trained on the pixel-annotated DDR subset and applied to every image. Its probability maps are summarised by the lesion-evidence bottleneck into a tensor $Z$ of soft, zone-wise lesion statistics (Section~\ref{sec:evidence}). The grading head combines a frozen embedding of the same image with the evidence tokens through a transformer (Section~\ref{sec:head}) and outputs cumulative ordinal probabilities (Section~\ref{sec:ordinal}). A rule module computes ICDR-style necessary-condition scores $R_k(Z)$ and penalises predictions that exceed them (Section~\ref{sec:rule}). Probabilities are temperature-scaled and converted into conformal prediction sets (Section~\ref{sec:conformal}). Detection boxes are obtained from the same probability maps $P$ (Section~\ref{sec:det}).
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  >=Stealth, font=\small,
+  blk/.style={draw, rounded corners=3pt, minimum height=11mm, minimum width=33mm, align=center, inner sep=3pt, fill=#1},
+  lab/.style={font=\footnotesize\itshape, text=black!70}]
+% row A: segmentation branch
+\node[blk=blue!6, minimum width=22mm] (img) at (0,0) {Fundus\\image $x$};
+\node[blk=orange!14] (seg) at (4.3,0) {Lesion segmentation\\U-Net, ResNet-18 +\\full-resolution branch};
+\node[blk=orange!7] (maps) at (8.9,0) {Lesion maps $P$\\MA, HE, EX, SE};
+\node[blk=green!14] (evi) at (13.5,0) {Evidence bottleneck\\4 lesions $\times$ 6 zones\\$\times$ 5 statistics};
+\node[blk=red!10] (rule) at (18.1,0) {Rule module\\$R_k(Z;\theta)$\\(soft logic)};
+\node[blk=orange!10] (det) at (8.9,2.1) {Detection\\components $\to$ boxes};
+% row B: grading branch
+\node[blk=gray!14, minimum width=22mm] (emb) at (0,-4.6) {Frozen\\embedding\\$\varphi(x)\in\R^{1152}$};
+\node[blk=white, minimum height=8mm] (itok) at (4.3,-4.6) {1 image token};
+\node[blk=green!8, minimum height=8mm] (tok) at (8.9,-2.3) {24 evidence tokens $t_{c,z}$};
+\node[blk=blue!14] (tr) at (8.9,-4.6) {Transformer\\2 layers, $d=64$, [CLS]};
+\node[blk=blue!7] (ord) at (13.5,-4.6) {Ordinal head\\$\hat F_k=\sigma(s_k)$, $k=1..4$};
+\node[blk=violet!12] (conf) at (18.1,-4.6) {Calibration +\\conformal set\\$\mathcal C_\alpha(x)$, referral};
+\draw[->] (img) -- (seg); \draw[->] (seg) -- (maps); \draw[->] (maps) -- (evi); \draw[->] (evi) -- (rule);
+\draw[->] (maps) -- (det);
+\draw[->] (img) -- (emb); \draw[->] (emb) -- (itok); \draw[->] (itok) -- (tr);
+\draw[->] (evi.south) |- (tok.east); \draw[->] (tok) -- (tr);
+\draw[->] (tr) -- (ord); \draw[->] (ord) -- (conf);
+\draw[->, dashed, red!60!black, thick] (ord.north) -- ++(0,0.9) -| (rule.south);
+\node[lab, anchor=west] at (13.8,-2.6) {$\mathcal L_{\mathrm{rule}}=\frac14\sum_k\mathrm{ReLU}(\hat F_k-R_k)^2$};
+\end{tikzpicture}}
+\caption{Overview of \mname. A segmentation network produces lesion maps; a differentiable bottleneck turns them into zone-wise evidence tokens, which a transformer combines with a frozen image embedding to predict cumulative ordinal probabilities. A soft-logic rule module (dashed) penalises grades that the lesion evidence cannot justify. Probabilities are calibrated and wrapped into conformal sets. The same lesion maps yield detection boxes.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Lesion segmentation network}
+\label{sec:seg}
+\paragraph{Architecture.} The segmenter $f_\phi$ is a U-Net \citep{ronneberger2015} with a ResNet-18 encoder \citep{he2016resnet} initialised from ImageNet weights (as distributed in \texttt{timm} \citep{wightman2019timm}). The encoder produces features at strides 2, 4, 8, 16 and 32; the decoder upsamples bilinearly and fuses encoder features by concatenation followed by two $3\times3$ convolution--BN--ReLU blocks (widths 128, 96, 64, 48). Because micro-aneurysms are only a few pixels wide, stride-2 features are not sufficient, and we add a shallow \emph{full-resolution branch} (two $3\times3$ conv--BN--ReLU blocks with 16 channels applied directly to the input) whose output is concatenated with the upsampled decoder output before a final $3\times3$ block and a $1\times1$ convolution to four logits. The network has 11.8\,M parameters.
+
+\paragraph{Objective.} Let $p_c=\sigma(\ell_c)$ be the predicted probability map and $y_c$ the binary mask of class $c$. We compare three objectives:
+\begin{align}
+\mathcal L_{\mathrm{bce}} &= \tfrac14\textstyle\sum_{c}\mathrm{BCE}(p_c,y_c),\\
+\mathcal L_{\mathrm{bce+dice}} &= \tfrac14\textstyle\sum_{c}\big[\mathrm{BCE}_w(p_c,y_c) + \mathcal L_{\mathrm{Dice}}(p_c,y_c)\big],\\
+\mathcal L_{\mathrm{seg}} &= \tfrac14\textstyle\sum_{c}\big[\mathrm{BCE}_w(p_c,y_c) + 2\,\mathrm{FTL}_c\big],
+\end{align}
+where $\mathrm{BCE}_w$ weights positive pixels by $w=(20,6,6,8)$ for (MA, HE, EX, SE), reflecting that the smaller and rarer the lesion class, the stronger the class imbalance. $\mathcal L_{\mathrm{Dice}}=1-\frac{2\sum p y+1}{\sum p+\sum y+1}$, and the focal Tversky loss \citep{abraham2019ftl,salehi2017tversky} is
+\begin{equation}
+\mathrm{FTL}_c=\Big(1-\mathrm{TI}_c\Big)^{\gamma},\qquad \mathrm{TI}_c=\frac{\mathrm{TP}_c+1}{\mathrm{TP}_c+\alpha\,\mathrm{FP}_c+\beta\,\mathrm{FN}_c+1},
+\label{eq:ftl}
+\end{equation}
+with $\mathrm{TP}_c=\sum p_c y_c$, $\mathrm{FP}_c=\sum p_c(1-y_c)$, $\mathrm{FN}_c=\sum(1-p_c)y_c$ computed over the mini-batch, $\alpha=0.3$, $\beta=0.7$ and $\gamma=0.75$. Since $\beta>\alpha$, missed lesion pixels cost more than spurious ones, which is the desirable bias for screening where recall of small lesions dominates; $\gamma<1$ gives larger gradients to well-classified classes than the plain Tversky loss, and keeps the loss sensitive when overlap is already moderate. $\mathcal L_{\mathrm{seg}}$ is our proposed objective; $\mathcal L_{\mathrm{bce}}$ and $\mathcal L_{\mathrm{bce+dice}}$ serve as ablation baselines.
+
+\paragraph{Lesion-centred sampling and optimisation.} Positive pixels are less than 1\% of all pixels. Each training crop ($256\times256$) is, with probability 0.7, positioned around a pixel of a randomly chosen lesion class in an image containing that class (the offset of the lesion inside the crop is random), and with probability 0.3 sampled uniformly. We use random flips, $90^\circ$ rotations and brightness/contrast jitter. Optimisation uses AdamW \citep{loshchilov2019adamw} with weight decay $10^{-4}$, one-cycle learning-rate schedule (peak $10^{-3}$, 15\% warm-up), batches of 8 crops, 48 iterations per epoch, 30 epochs and bfloat16 autocast on CPU (Alg.~\ref{alg:seg}). The checkpoint with the highest mean AUPR on the lesion-validation split (evaluated every five epochs at the full $512\times512$ resolution) is retained.
+
+\begin{algorithm}[!htbp]
+\caption{Lesion-centred training of the segmentation network.}
+\label{alg:seg}
+\begin{algorithmic}[1]
+\Require lesion-train images $\{(x_i,Y_i)\}$, epochs $E$, iterations $I$, crop size $q$, probability $\rho=0.7$
+\For{$e=1,\dots,E$}
+  \For{$t=1,\dots,I$}
+    \For{$b=1,\dots,8$}
+      \State draw $u\sim\mathcal U(0,1)$
+      \If{$u<\rho$} \State draw class $c$, image $i$ with $Y_{i,c}\neq0$, lesion pixel $r$; place crop containing $r$ at a random offset
+      \Else \State draw image $i$ and crop position uniformly \EndIf
+      \State augment (flip, rot$90^\circ$, brightness/contrast) crop and mask
+    \EndFor
+    \State $\ell\gets f_\phi(\text{batch})$ (bf16); $\mathcal L\gets \mathcal L_{\mathrm{seg}}(\ell,\text{masks})$ with Eq.~\eqref{eq:ftl}
+    \State update $\phi$ with AdamW and one-cycle schedule
+  \EndFor
+  \If{$e\bmod5=0$} \State evaluate mean AUPR on lesion-valid at $512^2$; keep best $\phi$ \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Detection from segmentation maps}
+\label{sec:det}
+For a class $c$ and image, the probability map $P_c$ is thresholded at a seed threshold $\vartheta_c=\max(0.6\,t_c,\,0.078)$, where $t_c$ is the Dice-optimal threshold on the validation set. Each 8-connected component $K$ becomes a box $b_K$ (its tight bounding rectangle) with score $s_K=\frac{1}{|K|}\sum_{u\in K}P_c(u)$. Boxes with lower seed thresholds have higher recall but also more false positives; their scores order them for precision--recall and FROC analysis (Alg.~\ref{alg:det}). No extra network is trained: segmentation and detection share the same weights, and we evaluate the proposals directly against the DDR ground-truth boxes.
+
+\begin{algorithm}[!htbp]
+\caption{Segmentation-guided lesion proposals and evaluation.}
+\label{alg:det}
+\begin{algorithmic}[1]
+\Require probability maps $P\in[0,1]^{4\times H\times W}$, thresholds $t_c$ (validation Dice-optimal)
+\For{each class $c\in\mathcal C$}
+  \State $\vartheta_c\gets\max(0.6\,t_c,\,0.078)$; $B_c\gets\emptyset$
+  \State find 8-connected components $\{K\}$ of $\{u:P_c(u)\ge\vartheta_c\}$
+  \For{each component $K$}
+    \State $b_K\gets$ bounding box of $K$; $s_K\gets\operatorname{mean}_{u\in K}P_c(u)$; add $(b_K,s_K)$ to $B_c$
+  \EndFor
+\EndFor
+\State \textbf{evaluate}: sort $B_c$ by score; greedy one-to-one matching to unique ground-truth boxes with $\mathrm{IoU}\ge\kappa$ (AP$_\kappa$, $\kappa\in\{0.3,0.5\}$); lesion-level FROC: a box is a hit if its centre lies inside a ground-truth box
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Lesion-evidence bottleneck}
+\label{sec:evidence}
+The grading head does not see $P$ directly; it sees a compact, interpretable summary computed as follows.
+
+\paragraph{Zones.} Let $h=w=128$ and let $\tilde P=\mathrm{maxpool}_{4}(P)\in[0,1]^{4\times h\times w}$. Max-pooling (rather than average pooling) keeps the peak of a one-pixel microaneurysm. We define six zones with binary masks $\Omega_z$ on the $h\times w$ grid, restricted to the circular field of view of radius $0.5h-2$: four quadrants (split by the horizontal and vertical lines through the image centre), a central disc of radius $0.35\cdot(h/2)$ approximating the macular region, and the whole field. Because the cropped photographs are approximately centred on the optic disc--macula axis, quadrants are a pragmatic stand-in for the ETDRS/ICDR quadrant definition; we do not claim anatomical registration.
+
+\paragraph{Soft counts.} Counting connected components is not differentiable and is unstable under thresholding. Instead, for threshold levels $\tau\in\{0.25,0.5,0.75\}$ we compute
+\begin{equation}
+n_{c,z}^{(\tau)}=\sum_{u\in\Omega_z}\sigma\!\Big(\frac{\tilde P_c(u)-\tau}{T}\Big),\qquad T=0.05,
+\label{eq:softcount}
+\end{equation}
+which counts the number of pooled cells in zone $z$ that contain lesion class $c$ with confidence about $\tau$. Two further statistics are the number of local peaks $\pi_{c,z}=\sum_{u\in\Omega_z}\mathbb 1[\tilde P_c(u)=\max_{u'\in\mathcal N_3(u)}\tilde P_c(u')\wedge \tilde P_c(u)>0.5]$ (a proxy for the lesion count) and the maximum probability $\mu_{c,z}=\max_{u\in\Omega_z}\tilde P_c(u)$. The evidence vector is
+\begin{equation}
+e_{c,z}=\log\!\big(1+\big[n_{c,z}^{(0.25)},\,n_{c,z}^{(0.5)},\,n_{c,z}^{(0.75)},\,\pi_{c,z},\,10\,\mu_{c,z}\big]\big)\in\R^5,
+\label{eq:evidence}
+\end{equation}
+and the tensor $Z=(e_{c,z})\in\R^{4\times6\times5}$ (120 numbers) is the \emph{only} way in which lesion information enters the grade (Alg.~\ref{alg:evid}). The logarithm compresses the dynamic range between a handful of microaneurysms and several hundred exudate cells. Since Eq.~\eqref{eq:softcount} is smooth in $\tilde P$, the bottleneck is differentiable in principle, which would allow end-to-end fine-tuning of $f_\phi$ from grade supervision; in the present study, $f_\phi$ is frozen at this stage for compute reasons (Section~\ref{sec:setup}).
+
+\begin{algorithm}[!htbp]
+\caption{Zone-wise soft lesion evidence.}
+\label{alg:evid}
+\begin{algorithmic}[1]
+\Require lesion probability maps $P\in[0,1]^{4\times H\times W}$, zone masks $\{\Omega_z\}_{z=1}^{6}$ on the $128^2$ grid
+\State $\tilde P\gets\operatorname{maxpool}_4(P)$
+\For{$c\in\mathcal C$, $z=1..6$}
+  \For{$\tau\in\{0.25,0.5,0.75\}$} \State $n^{(\tau)}_{c,z}\gets\sum_{u\in\Omega_z}\sigma\big((\tilde P_c(u)-\tau)/T\big)$ \EndFor
+  \State $\pi_{c,z}\gets\sum_{u\in\Omega_z}\mathbb 1[\tilde P_c(u)\text{ is a }3{\times}3\text{ local maximum},\ \tilde P_c(u)>0.5]$
+  \State $\mu_{c,z}\gets\max_{u\in\Omega_z}\tilde P_c(u)$
+  \State $e_{c,z}\gets\log(1+[n^{(.25)},n^{(.5)},n^{(.75)},\pi,10\mu])$
+\EndFor
+\State \Return $Z=(e_{c,z})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Evidence-token grade head}
+\label{sec:head}
+Each $(c,z)$ pair becomes a token $t_{c,z}=W_e\,e_{c,z}+a_c+b_z\in\R^d$ with $d=64$, where $a_c$ and $b_z$ are learned class and zone embeddings. The frozen image embedding $\varphi(x)\in\R^{1152}$ (concatenated global averages of stages 3 and 4 of a ConvNeXt-T \citep{liu2022convnext} applied to the $256\times256$ filtered image, standardised with training-set statistics) becomes one image token $t_0=W_i\,\mathrm{Dropout}(\varphi(x))$. A learned [CLS] token and the $1+24$ tokens enter a two-layer pre-LN transformer encoder (four heads, feed-forward width 128, dropout 0.1). The output of the [CLS] token passes through LayerNorm and a linear layer to produce four cumulative logits $s_1,\dots,s_4$. Attention weights from the [CLS] token to the evidence tokens provide a direct, inspectable account of which lesion class and zone drove a prediction. The head has 0.14\,M parameters, so that the whole grading stage can be trained in seconds on a CPU.
+
+\subsection{Ordinal cumulative-link objective with soft targets}
+\label{sec:ordinal}
+Following the multiple-output formulation of ordinal regression \citep{niu2016ordinal,cao2020coral}, we model $\hat F_k=P(y\ge k\mid x)=\sigma(s_k)$ for $k=1,\dots,4$. To model adjacent-grade disagreement we replace the one-hot target by a discretised Gaussian over grades,
+\begin{equation}
+q_j(y)=\frac{\exp\!\big(-(j-y)^2/2\sigma_y^2\big)}{\sum_{j'=0}^{4}\exp\!\big(-(j'-y)^2/2\sigma_y^2\big)},\quad
+F_k^\star=\sum_{j\ge k}q_j(y),
+\label{eq:softlabel}
+\end{equation}
+and minimise the binary cross-entropy between $F_k^\star$ and $\hat F_k$:
+\begin{equation}
+\mathcal L_{\mathrm{ord}}=-\frac14\sum_{k=1}^{4}\Big[F^\star_k\log\hat F_k+(1-F^\star_k)\log(1-\hat F_k)\Big].
+\label{eq:ord}
+\end{equation}
+With $\sigma_y=0$ this reduces to the standard cumulative-link loss. At inference, $\hat y=\sum_k\mathbb 1[\hat F_k>0.5]$, and the class probabilities are obtained from the monotonised cumulative probabilities $\bar F_k=\min_{k'\le k}\hat F_{k'}$ as $p_j=\bar F_j-\bar F_{j+1}$ (with $\bar F_0=1$, $\bar F_5=0$), floored at $10^{-6}$ and renormalised. In our experiments, $\sigma_y=0.5$, which places about 0.79 of the target mass on the labelled grade and 0.10 on each neighbour.
+
+\subsection{Clinical-rule consistency}
+\label{sec:rule}
+The ICDR scale describes grades through necessary conditions on the lesions that must be visible. We encode four such conditions as soft logic \citep{diligenti2017sbr,hu2016logic}, using the product t-norm for conjunction ($a\wedge b=ab$) and its dual for disjunction ($a\vee b=1-(1-a)(1-b)$). Let $u_{c,z}=e_{c,z,2}=\log(1+n_{c,z}^{(0.5)})$ and $a(v;\theta)=\sigma((v-\theta)/s)$ with $s=0.35$. With learnable thresholds $\theta=(\theta_1,\dots,\theta_{10})$ and $z=\mathrm{all}$ the whole-field zone, the rule scores are
+\begin{align}
+R_1&=\textstyle\bigvee_{c\in\mathcal C}\,a(u_{c,\mathrm{all}};\theta_{c}) &&\text{(any lesion is visible: needed for mild or worse)}\label{eq:r1}\\
+R_2&=a(u_{\ma,\mathrm{all}};\theta_5)\vee a(u_{\he,\mathrm{all}};\theta_2)\vee a(u_{\ex,\mathrm{all}};\theta_3)\vee a(u_{\se,\mathrm{all}};\theta_4) &&\text{(more than few microaneurysms)}\label{eq:r2}\\
+R_3&=\Big(\textstyle\bigwedge_{q=1}^{4}a(u_{\he,q};\theta_{5+q})\Big)\vee a(u_{\se,\mathrm{all}};\theta_{10}) &&\text{(haemorrhages in four quadrants, \emph{or} extensive soft exudates)}\label{eq:r3}\\
+R_4&=R_2 &&\text{(PDR is never lesion-free)}\label{eq:r4}
+\end{align}
+where $\theta_c$ in Eq.~\eqref{eq:r1} denotes thresholds $\theta_1,\dots,\theta_4$ for $c=\ma,\he,\ex,\se$. Equation~\eqref{eq:r3} is a soft proxy for the ``4'' of the 4--2--1 rule; venous beading, IRMA and neovascularisation are not annotated in DDR, so $R_3$ is only a partial surrogate and $R_4$ imposes just a weak necessary condition. We stress that these rules are \emph{necessary conditions} (``$y\ge k\Rightarrow R_k$''), not sufficient ones: a grade may be lower than the lesions allow, but never higher.
+
+\paragraph{Calibrating thresholds on labels.} Because the predicted lesion statistics are noisy, hand-set thresholds would be arbitrary. We therefore fit $\theta$ once on the training labels by minimising
+\begin{equation}
+\mathcal L_{\mathrm{fit}}(\theta)=\sum_{k=1}^{4}\Big[\E_{i:\,y_i\ge k}\big(1-R_k(Z_i;\theta)\big)+\tfrac12\,\E_{i:\,y_i<k}R_k(Z_i;\theta)\Big],
+\label{eq:rulefit}
+\end{equation}
+that is, the rule should hold for images whose grade is at least $k$ (first term), and should not hold trivially for lesion-poor images (second term, which prevents $R_k\equiv1$). The parameters are then frozen. The rules are thus \emph{clinically inspired, data-calibrated templates}, not a re-implementation of the grading guideline.
+
+\paragraph{Rule-consistency loss and violation rate.} The grading head is trained with
+\begin{equation}
+\mathcal L=\mathcal L_{\mathrm{ord}}+\lambda\,\mathcal L_{\mathrm{rule}},\qquad
+\mathcal L_{\mathrm{rule}}=\frac14\sum_{k=1}^4\mathrm{ReLU}\big(\hat F_k-R_k(Z;\theta)\big)^2,\quad\lambda=1,
+\label{eq:total}
+\end{equation}
+so that the predicted probability of grade $\ge k$ is pushed below the rule score. As an evaluation measure independent of the training loss, we define the \emph{rule-violation rate} of a model $\hat y(\cdot)$ on a test set as the fraction of images for which $\hat y\ge k$ and $R_k<0.5$ for at least one $k\le\hat y$ (Alg.~\ref{alg:rule}); the same frozen rules are applied to \emph{every} model, including baselines that never saw them.
+
+\begin{algorithm}[!htbp]
+\caption{Rule calibration, rule-consistent training and violation rate.}
+\label{alg:rule}
+\begin{algorithmic}[1]
+\Require training evidence $\{Z_i\}$, labels $\{y_i\}$, embeddings $\{\varphi_i\}$, $\sigma_y$, $\lambda$
+\State \textbf{Calibrate rules:} initialise $\theta$; minimise $\mathcal L_{\mathrm{fit}}(\theta)$ (Eq.~\ref{eq:rulefit}) with Adam; freeze $\theta$
+\For{epoch $=1,\dots,60$}
+  \For{mini-batch $B$}
+    \State $s\gets g_\psi(\varphi,Z)$; $\hat F\gets\sigma(s)$
+    \State $\mathcal L\gets\mathcal L_{\mathrm{ord}}(\hat F,F^\star(y;\sigma_y))+\lambda\cdot\frac14\sum_k\mathrm{ReLU}(\hat F_k-R_k(Z;\theta))^2$
+    \State update $\psi$ (AdamW, cosine schedule)
+  \EndFor
+  \State every 3 epochs: compute quadratic-weighted kappa on validation half A; keep best $\psi$
+\EndFor
+\State \textbf{Violation rate} on test set: $\frac1N\sum_i\mathbb 1[\exists k\le\hat y_i:\ R_k(Z_i;\theta)<0.5]$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Calibration and split-conformal referral}
+\label{sec:conformal}
+\paragraph{Temperature scaling.} On validation half A we fit a single temperature $T^\star\in[0.5,3]$ that minimises the negative log-likelihood of the class probabilities obtained from the logits $s_k/T$ \citep{guo2017calibration}; this changes confidences but not predicted grades. Expected calibration error (ECE) is computed with 15 equal-width confidence bins.
+
+\paragraph{Split-conformal sets.} Let $\hat p(x)\in\Delta^4$ denote the calibrated class probabilities. On validation half B (calibration set of size $n$, disjoint from model selection and temperature fitting), we define the nonconformity score $\varsigma_i=1-\hat p_{y_i}(x_i)$ and the threshold
+\begin{equation}
+\hat q_\alpha=\varsigma_{(\lceil(n+1)(1-\alpha)\rceil)},\qquad
+\mathcal C_\alpha(x)=\{j:\ 1-\hat p_j(x)\le\hat q_\alpha\},
+\label{eq:conformal}
+\end{equation}
+where $\varsigma_{(m)}$ is the $m$-th smallest score. If calibration and test data are exchangeable, $\Pr[y\in\mathcal C_\alpha(x)]\ge1-\alpha$ marginally \citep{vovk2005,angelopoulos2023}. Sets of size one are confident decisions; larger sets signal ambiguity. We define a \emph{referral rule}: refer the patient if $\mathcal C_\alpha(x)$ contains any grade $\ge2$ (referable DR); because the guarantee concerns the true grade, the probability that a truly referable patient is \emph{not} referred is at most $\alpha$ \emph{marginally over the population}, but it need not hold within each class. We therefore also report the empirical class-conditional referral sensitivity (Alg.~\ref{alg:conf}).
+
+\begin{algorithm}[!htbp]
+\caption{Calibration and split-conformal referral.}
+\label{alg:conf}
+\begin{algorithmic}[1]
+\Require trained head, validation halves A and B, test image $x$, level $\alpha$
+\State $T^\star\gets\arg\min_{T}\mathrm{NLL}(\text{half A};T)$
+\State for $i\in$ half B: $\varsigma_i\gets 1-\hat p_{y_i}(x_i;T^\star)$
+\State $\hat q_\alpha\gets$ the $\lceil(n+1)(1-\alpha)\rceil$-th smallest $\varsigma_i$
+\State $\mathcal C_\alpha(x)\gets\{j:\ 1-\hat p_j(x;T^\star)\le\hat q_\alpha\}$
+\State \textbf{refer} iff $\max\mathcal C_\alpha(x)\ge2$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Image-quality gate}
+\label{sec:quality}
+Under the six-class protocol, ungradable images (grade~5 in DDR) are detected by a separate binary classifier with the same MLP architecture as the baseline, trained on all training images with the target $\mathbb 1[y=5]$. Its decision threshold is chosen on validation data to maximise the macro-F1 of the six-class prediction; an image flagged as ungradable receives class~5, otherwise the ordinal grade is output. The gate is deliberately kept independent of the ordinal head, so that the five-class results are not affected by it.
+
+\subsection{Complexity}
+The segmentation network (11.8\,M parameters) is the dominant cost: on four CPU cores with bfloat16 it processes about 8 images per second at $512\times512$ (Section~\ref{sec:setup}). Evidence extraction (Alg.~\ref{alg:evid}) costs $\mathcal O(4\cdot6\cdot h w)$ per image and is negligible. The grading head has 0.14\,M parameters, and each ordinal prediction needs 26 tokens, i.e. $\mathcal O(26^2 d)$ attention operations. Conformal calibration needs a sort of $n$ scores. The method thus adds under 1\% of parameters and well under 1\% of the compute of the segmentation network on top of a backbone embedding.
