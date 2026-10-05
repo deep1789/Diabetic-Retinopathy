@@ -10,3 +10,4 @@ paper/*.fdb_latexmk
 paper/*.synctex.gz
 paper/*.toc
 paper/*.spl
+paper/main.pdf

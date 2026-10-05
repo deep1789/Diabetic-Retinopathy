@@ -3,8 +3,8 @@ usage: python heads.py <seg_variant> <backbone> [seeds]
 Writes /home/user/work/res/heads_<seg_variant>_<backbone>.json and per-run test probabilities."""
 import sys, json, os, numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 from sklearn.metrics import cohen_kappa_score, f1_score, roc_auc_score
-torch.set_num_threads(4)
-W = '/home/user/work/'; os.makedirs(W + 'res', exist_ok=True)
+torch.set_num_threads(int(os.environ.get('NT', 4)))
+W = os.environ.get('DRW', '/home/user/work/'); os.makedirs(W + 'res', exist_ok=True)
 SEG, BB = sys.argv[1], sys.argv[2]; SEEDS = int(sys.argv[3]) if len(sys.argv) > 3 else 5
 
 # ---------------------------------------------------------------- lesion evidence (C1)
@@ -99,7 +99,7 @@ def run(cfg, seed, D):
     torch.manual_seed(seed); np.random.seed(seed)
     E, Z, y = D['tr']; Ev, Zv, yv = D['va']; Et, Zt, yt = D['te']; R = D['R']
     m = make(cfg, E.shape[1]); lr = 5e-4 if cfg['arch'] == 'et' else 1e-3
-    opt = torch.optim.AdamW(m.parameters(), lr, weight_decay=1e-2); EP = 60
+    opt = torch.optim.AdamW(m.parameters(), lr, weight_decay=1e-2); EP = int(os.environ.get('HEADS_EP', 60))
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, EP)
     sigma, lam = cfg.get('sigma', 0.0), cfg.get('lam', 0.0); best, state = -1, None
     def predict(E_, Z_):

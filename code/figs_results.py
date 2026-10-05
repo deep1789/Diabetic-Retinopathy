@@ -110,7 +110,9 @@ def grading(seg='ftlbg', bb='convnext_tiny'):
     plt.tight_layout(); plt.savefig(OUT + 'fig_grading.pdf'); plt.close()
 
 def ablation(seg='ftlbg', bb='convnext_tiny'):
-    A = json.load(open(W + f'res/analysis_{seg}_{bb}.json')); names = list(A['agg']); lab = [n.replace('Ours (full: C1+C2+C5)', 'LesionRule (full)') for n in names]
+    A = json.load(open(W + f'res/analysis_{seg}_{bb}.json')); names = list(A['agg']); LABS = {'B1 CE (img emb.)': 'B1 embedding, CE', 'B2 Ordinal (img emb.)': 'B2 embedding, ordinal', 'B3 Lesion evidence only': 'B3 evidence only', 'B4 Concat (emb.+evidence)': 'B4 concat.',
+            'Ours: tokens, no rule/soft': 'T0 tokens', 'Ours: + soft labels (C5)': 'T1 + soft labels', 'Ours: + rule loss (C2)': 'T2 + rule loss', 'Ours (full: C1+C2+C5)': 'LesionRule (full)', 'Abl: full w/o evidence tokens': 'A1 w/o evidence tokens'}
+    lab = [LABS.get(n, n) for n in names]
     fig, ax = plt.subplots(1, 3, figsize=(7.4, 2.9), sharey=True)
     y = np.arange(len(names))[::-1]
     for a, (k, t) in zip(ax, [('qwk', 'QWK (higher better)'), ('ece', 'ECE (lower better)'), ('viol', 'Rule-violation rate (lower better)')]):

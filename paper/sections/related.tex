@@ -31,11 +31,12 @@ Table~\ref{tab:lit} summarises how the methods discussed above differ in design.
 \centering
 \caption{Design-level comparison with representative prior work (qualitative; $\checkmark$ = addressed explicitly, $\circ$ = partially or implicitly, $-$ = not addressed). Entries reflect our reading of the cited papers' main design and may omit secondary features.}
 \label{tab:lit}
-\small
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}p{3.3cm}cccccccc@{}}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lcccccccc@{}}
 \toprule
-Method & Grade & Seg. & Det. & Lesion$\to$grade link & Zone-wise evidence & Rule consist. & Ordinal / noise & Conformal \\
+Method & Grade & Seg. & Det. & \makecell{Lesion$\to$grade\\link} & \makecell{Zone-wise\\evidence} & \makecell{Rule\\consist.} & \makecell{Ordinal /\\noise} & Conformal \\
 \midrule
 Zoom-in-Net \citep{wang2017zoomin} & $\checkmark$ & $-$ & $\circ$ & $\circ$ & $-$ & $-$ & $-$ & $-$ \\
 Two-stage detect.\ + grade \citep{yang2017twostage} & $\checkmark$ & $-$ & $\checkmark$ & $\checkmark$ & $-$ & $-$ & $-$ & $-$ \\
@@ -48,5 +49,5 @@ Lesion-based contrastive \citep{huang2021lesioncl} & $\checkmark$ & $-$ & $-$ & 
 \midrule
 \textbf{\mname\ (this work)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}

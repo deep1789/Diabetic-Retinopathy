@@ -9,7 +9,7 @@ Let $x\in\R^{H\times W\times 3}$ be a fundus photograph. We consider three coupl
 \caption{Main notation.}
 \label{tab:notation}
 \small
-\begin{tabular}{@{}ll@{}}
+\begin{tabular}{@{}lp{0.64\textwidth}@{}}
 \toprule
 Symbol & Meaning \\
 \midrule
@@ -107,15 +107,15 @@ with $\mathrm{TP}_c=\sum p_c y_c$, $\mathrm{FP}_c=\sum p_c(1-y_c)$, $\mathrm{FN}
 
 \subsection{Detection from segmentation maps}
 \label{sec:det}
-For a class $c$ and image, the probability map $P_c$ is thresholded at a seed threshold $\vartheta_c=\max(0.6\,t_c,\,0.078)$, where $t_c$ is the Dice-optimal threshold on the validation set. Each 8-connected component $K$ becomes a box $b_K$ (its tight bounding rectangle) with score $s_K=\frac{1}{|K|}\sum_{u\in K}P_c(u)$. Boxes with lower seed thresholds have higher recall but also more false positives; their scores order them for precision--recall and FROC analysis (Alg.~\ref{alg:det}). No extra network is trained: segmentation and detection share the same weights, and we evaluate the proposals directly against the DDR ground-truth boxes.
+For a class $c$ and image, the probability map $P_c$ is thresholded at a class-specific seed threshold $\vartheta_c$. Each 8-connected component $K$ of $\{u:P_c(u)\ge\vartheta_c\}$ becomes a box $b_K$ (its tight bounding rectangle) with score $s_K=\frac{1}{|K|}\sum_{u\in K}P_c(u)$. Because the segmentation objective is trained with positive-class weights, probabilities are not calibrated and the Dice-optimal threshold is high (typically $>0.8$); using it as seed would cap the attainable recall. We therefore choose $\vartheta_c$ from the grid $\Theta=\{0.05,0.1,0.2,0.3,0.5,0.7\}$ by maximising AP at IoU 0.3 on the lesion-\emph{validation} split. Lower seeds have higher recall but more false positives; the scores order the boxes for precision--recall and FROC analysis (Alg.~\ref{alg:det}). No extra network is trained: segmentation and detection share the same weights, and we evaluate the proposals directly against the DDR ground-truth boxes.
 
 \begin{algorithm}[!htbp]
 \caption{Segmentation-guided lesion proposals and evaluation.}
 \label{alg:det}
 \begin{algorithmic}[1]
-\Require probability maps $P\in[0,1]^{4\times H\times W}$, thresholds $t_c$ (validation Dice-optimal)
+\Require probability maps $P\in[0,1]^{4\times H\times W}$, seed grid $\Theta$, validation split with ground-truth boxes
 \For{each class $c\in\mathcal C$}
-  \State $\vartheta_c\gets\max(0.6\,t_c,\,0.078)$; $B_c\gets\emptyset$
+  \State $\vartheta_c\gets\arg\max_{\vartheta\in\Theta}\mathrm{AP}_{0.3}^{\text{val}}(\vartheta)$ (computed once on validation images); $B_c\gets\emptyset$
   \State find 8-connected components $\{K\}$ of $\{u:P_c(u)\ge\vartheta_c\}$
   \For{each component $K$}
     \State $b_K\gets$ bounding box of $K$; $s_K\gets\operatorname{mean}_{u\in K}P_c(u)$; add $(b_K,s_K)$ to $B_c$
@@ -182,12 +182,13 @@ With $\sigma_y=0$ this reduces to the standard cumulative-link loss. At inferenc
 \label{sec:rule}
 The ICDR scale describes grades through necessary conditions on the lesions that must be visible. We encode four such conditions as soft logic \citep{diligenti2017sbr,hu2016logic}, using the product t-norm for conjunction ($a\wedge b=ab$) and its dual for disjunction ($a\vee b=1-(1-a)(1-b)$). Let $u_{c,z}=e_{c,z,2}=\log(1+n_{c,z}^{(0.5)})$ and $a(v;\theta)=\sigma((v-\theta)/s)$ with $s=0.35$. With learnable thresholds $\theta=(\theta_1,\dots,\theta_{10})$ and $z=\mathrm{all}$ the whole-field zone, the rule scores are
 \begin{align}
-R_1&=\textstyle\bigvee_{c\in\mathcal C}\,a(u_{c,\mathrm{all}};\theta_{c}) &&\text{(any lesion is visible: needed for mild or worse)}\label{eq:r1}\\
-R_2&=a(u_{\ma,\mathrm{all}};\theta_5)\vee a(u_{\he,\mathrm{all}};\theta_2)\vee a(u_{\ex,\mathrm{all}};\theta_3)\vee a(u_{\se,\mathrm{all}};\theta_4) &&\text{(more than few microaneurysms)}\label{eq:r2}\\
-R_3&=\Big(\textstyle\bigwedge_{q=1}^{4}a(u_{\he,q};\theta_{5+q})\Big)\vee a(u_{\se,\mathrm{all}};\theta_{10}) &&\text{(haemorrhages in four quadrants, \emph{or} extensive soft exudates)}\label{eq:r3}\\
-R_4&=R_2 &&\text{(PDR is never lesion-free)}\label{eq:r4}
+R_1&=\textstyle\bigvee_{c\in\mathcal C}\,a(u_{c,\mathrm{all}};\theta_{c}),\label{eq:r1}\\
+R_2&=a(u_{\ma,\mathrm{all}};\theta_5)\vee a(u_{\he,\mathrm{all}};\theta_2)\vee a(u_{\ex,\mathrm{all}};\theta_3)\vee a(u_{\se,\mathrm{all}};\theta_4),\label{eq:r2}\\
+R_3&=\Big(\textstyle\bigwedge_{q=1}^{4}a(u_{\he,q};\theta_{5+q})\Big)\vee a(u_{\se,\mathrm{all}};\theta_{10}),\label{eq:r3}\\
+R_4&=R_2,\label{eq:r4}
 \end{align}
-where $\theta_c$ in Eq.~\eqref{eq:r1} denotes thresholds $\theta_1,\dots,\theta_4$ for $c=\ma,\he,\ex,\se$. Equation~\eqref{eq:r3} is a soft proxy for the ``4'' of the 4--2--1 rule; venous beading, IRMA and neovascularisation are not annotated in DDR, so $R_3$ is only a partial surrogate and $R_4$ imposes just a weak necessary condition. We stress that these rules are \emph{necessary conditions} (``$y\ge k\Rightarrow R_k$''), not sufficient ones: a grade may be lower than the lesions allow, but never higher.
+where $\theta_c$ in Eq.~\eqref{eq:r1} denotes the thresholds $\theta_1,\dots,\theta_4$ for $c=\ma,\he,\ex,\se$. The four rules read as follows. $R_1$: some lesion is visible (needed for mild DR or worse). $R_2$: lesions beyond a few microaneurysms are visible (needed for moderate or worse). $R_3$: haemorrhages in all four quadrants, \emph{or} extensive soft exudates (a soft proxy for the ``4'' of the 4--2--1 rule; needed for severe or worse). $R_4$: proliferative DR is never lesion-free.
+Venous beading, IRMA and neovascularisation are not annotated in DDR, so $R_3$ is only a partial surrogate and $R_4$ imposes just a weak necessary condition. We stress that these rules are \emph{necessary conditions} (``$y\ge k\Rightarrow R_k$''), not sufficient ones: a grade may be lower than the lesions allow, but never higher.
 
 \paragraph{Calibrating thresholds on labels.} Because the predicted lesion statistics are noisy, hand-set thresholds would be arbitrary. We therefore fit $\theta$ once on the training labels by minimising
 \begin{equation}

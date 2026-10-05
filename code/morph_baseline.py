@@ -16,6 +16,6 @@ def maps(X):
     return out
 Pv = maps(np.load(W + 'les_valid_X.npy')); Pt = maps(np.load(W + 'les_test_X.npy'))
 Yv = np.load(W + 'les_valid_Y.npy'); Yt = np.load(W + 'les_test_Y.npy')
-res = full_eval(Pv, Yv, Pt, Yt, np.load(W + 'les_test_B.npy', allow_pickle=True)); res['variant'] = 'morph'
+res = full_eval(Pv, Yv, Pt, Yt, np.load(W + 'les_test_B.npy', allow_pickle=True), np.load(W + 'les_valid_B.npy', allow_pickle=True)); res['variant'] = 'morph'
 json.dump(res, open(W + 'res/seg_morph.json', 'w'), indent=1); np.save(W + 'probs_test_morph.npy', Pt)
 print('AUPR', [round(a, 3) for a in res['aupr']], 'Dice', [round(a, 3) for a in res['dice']])

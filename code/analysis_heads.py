@@ -1,7 +1,7 @@
 """Aggregate head results: mean/SD over seeds, bootstrap CIs, paired differences, calibration, conformal referral. usage: python analysis_heads.py <seg> <bb> [main_model_name]"""
-import sys, json, numpy as np
+import sys, os, json, numpy as np
 from sklearn.metrics import roc_auc_score, f1_score, precision_recall_fscore_support
-W = '/home/user/work/'; SEG, BB = sys.argv[1], sys.argv[2]; MAIN = sys.argv[3] if len(sys.argv) > 3 else 'Ours (full: C1+C2+C5)'
+W = os.environ.get('DRW', '/home/user/work/'); SEG, BB = sys.argv[1], sys.argv[2]; MAIN = sys.argv[3] if len(sys.argv) > 3 else 'Ours (full: C1+C2+C5)'
 R = json.load(open(W + f'res/heads_{SEG}_{BB}.json')); res = R['res']; yt = np.array(R['yt']); yb = np.array(R['yb'])
 KEYS = ['qwk', 'acc', 'f1', 'auc_ref', 'ece', 'viol', 'qwk_full', 'acc6', 'f1_6', 'gate_auc']
 KEYS += [k for k in ['ex_qwk', 'ex_acc', 'ex_f1', 'ex_auc', 'ex_viol'] if k in next(iter(res.values()))[0]]

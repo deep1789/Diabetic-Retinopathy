@@ -1,1 +1,38 @@
-# Diabetic-Retinopathy
+# Lesion-grounded DR grading, segmentation and detection on DDR
+
+Code and manuscript for *"Lesion-Grounded Ordinal Grading with Clinical-Rule Consistency and Conformal Referral for Diabetic Retinopathy: Joint Classification, Lesion Segmentation and Lesion Detection on the DDR Dataset"* (Elsevier `elsarticle` format, `paper/`).
+
+Everything was produced on a 4-core CPU machine (no GPU) using bfloat16 autocast. See the paper (Section 5 and Section 7.1) for what this does and does not allow.
+
+## Data (not included)
+* **DDR / OIA-DDR** (Li et al., Information Sciences 2019) – CC BY-NC-SA 4.0. Get the ten zip volumes from the links in <https://github.com/nkicsl/DDR-dataset> and place them as `DDR-dataset.zip.001 … .010` in one folder. The code reads them in place through `code/multizip.py` (no concatenation needed).
+* **Kaggle "diabetic-retinopathy-224x224-gaussian-filtered"** (APTOS-2019 derived, CC0) – used only as zero-shot external grading test.
+
+Paths are set at the top of the scripts (`/tmp/claude-0/s/ddr`, `/tmp/claude-0/s/k.zip`, work dir `/home/user/work`). Edit them for your machine.
+
+## Pipeline (`code/`)
+| Step | Script | Output |
+|---|---|---|
+| 1 Lesion subset → 512² cache (+ boxes) | `prep_lesion.py` | `les_*` arrays |
+| 2 Dataset figures / statistics | `figs_eda.py`, `tab_data.py` | `paper/figs`, `paper/stats_ddr.json` |
+| 3 Train lesion segmentation (`bce`, `bcedice`, `ftl`, `ftlbg`) | `train_seg.py <variant> 0 30` | `seg_<variant>_s0.pt` |
+| 4 Segmentation + detection evaluation | `eval_seg.py <variant>`, `morph_baseline.py` | `res/seg_*.json` |
+| 5 Lesion maps for all grading images | `infer_grading.py ftlbg ddr|aptos` | `g_*_maps.npy`, `g_*_rgb256.npy` |
+| 6 Frozen image embeddings | `extract_feats.py ddr|aptos` | `g_*_feat_convnext_tiny.npy` |
+| 7 Grading heads (baselines, ablations, rules, soft labels, external) | `heads.py ftlbg convnext_tiny 5` | `res/heads_*.json` |
+| 8 Bootstrap, calibration, conformal | `analysis_heads.py ftlbg convnext_tiny` | `res/analysis_*.json` |
+| 9 Fine-tuned ResNet-18 reference | `ft_baseline.py 8` | `res/ft_baseline.json` |
+| 10 Tables / figures | `make_tables.py`, `figs_results.py <name>` | `paper/tables`, `paper/figs`, `paper/numbers.tex` |
+
+Notes
+* Do **not** run two torch jobs at once with default thread settings on a small machine: oversubscription slowed one job by 8×. `heads.py` honours `NT=<threads>`.
+* The DDR lesion partition is not aligned with the grading partition; grading-test images that are in lesion-train/valid are excluded (`leak-controlled test set`, see paper §3.4 and Appendix A).
+
+## Paper
+```
+cd paper && latexmk -pdf main.tex
+```
+Every number in tables comes from `res/*.json` through `make_tables.py`; no manual transcription.
+
+## Licence
+Code: MIT. DDR data: CC BY-NC-SA 4.0 (non-commercial). Not for clinical use.

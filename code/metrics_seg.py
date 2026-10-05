@@ -33,13 +33,10 @@ def best_thr(P, Y, grid=np.linspace(0.05, 0.95, 19)):
 def components(prob_c, thr, min_area=1):
     """Seg-guided proposals (Alg. 5): connected components of the thresholded map -> (x0,y0,x1,y1,score)."""
     n, lab, st, _ = cv2.connectedComponentsWithStats((prob_c >= thr).astype(np.uint8), connectivity=8)
-    out = []
-    for k in range(1, n):
-        x, y, w, h, a = st[k]
-        if a < min_area: continue
-        sc = prob_c[lab == k].mean() / 255.
-        out.append([x, y, x + w, y + h, sc])
-    return np.array(out, np.float32).reshape(-1, 5)
+    if n <= 1: return np.zeros((0, 5), np.float32)
+    cnt = np.bincount(lab.ravel(), minlength=n); sm = np.bincount(lab.ravel(), weights=prob_c.ravel().astype(np.float64), minlength=n)
+    keep = np.where(st[1:, 4] >= min_area)[0] + 1
+    return np.concatenate([st[keep, :2], st[keep, :2] + st[keep, 2:4], (sm[keep] / cnt[keep] / 255.)[:, None]], 1).astype(np.float32)
 
 def iou_mat(a, b):
     ix0 = np.maximum(a[:, None, 0], b[None, :, 0]); iy0 = np.maximum(a[:, None, 1], b[None, :, 1])
@@ -92,14 +89,18 @@ def froc(preds, gts, fps_at=(1, 2, 4, 8, 16)):
     c = np.array(curve) if curve else np.zeros((1, 2))
     return {f: float(c[c[:, 0] <= f][:, 1].max()) if (c[:, 0] <= f).any() else 0. for f in fps_at}, c
 
-def full_eval(Pv, Yv, Pt, Yt, Bt):
-    """Pixel metrics (AUPR, Dice, IoU at val-optimal thresholds) and segmentation-derived detection metrics on the test split."""
+SEEDS = (12, 25, 50, 75, 128, 180)          # candidate seed thresholds on the uint8 scale (0.05 .. 0.7)
+
+def full_eval(Pv, Yv, Pt, Yt, Bt, Bv):
+    """Pixel metrics (AUPR, Dice, IoU at val-optimal thresholds) and segmentation-derived detection metrics on the test split.
+    The detection seed threshold of each class is selected on the validation split by AP at IoU 0.3."""
     thr = best_thr(Pv, Yv); d, i = dice_iou(Pt, Yt, thr); ap = aupr(Pt, Yt)
-    gts = [[dedupe(b[b[:, 0] == c][:, 1:]) for b in Bt] for c in range(4)]
+    gts_t = [[dedupe(b[b[:, 0] == c][:, 1:]) for b in Bt] for c in range(4)]; gts_v = [[dedupe(b[b[:, 0] == c][:, 1:]) for b in Bv] for c in range(4)]
     det = {}
     for c, nme in enumerate(['MA', 'HE', 'EX', 'SE']):
-        preds = [components(Pt[k, c], max(thr[c] * 0.6, 20)) for k in range(len(Pt))]     # seed threshold below the Dice threshold -> higher recall
-        fr, curve = froc(preds, gts[c])
-        det[nme] = dict(ap50=ap_class(preds, gts[c], .5), ap30=ap_class(preds, gts[c], .3), froc=fr, n_pred=int(sum(len(p) for p in preds)),
-                        n_gt=int(sum(len(g) for g in gts[c])), curve=[[float(a), float(b)] for a, b in curve[::max(1, len(curve) // 200)]])
+        sc = [ap_class([components(Pv[k, c], s) for k in range(len(Pv))], gts_v[c], .3) for s in SEEDS]; seed = SEEDS[int(np.argmax(sc))]
+        preds = [components(Pt[k, c], seed) for k in range(len(Pt))]
+        fr, curve = froc(preds, gts_t[c])
+        det[nme] = dict(seed=seed / 255, val_ap30=float(max(sc)), ap50=ap_class(preds, gts_t[c], .5), ap30=ap_class(preds, gts_t[c], .3), froc=fr, n_pred=int(sum(len(p) for p in preds)),
+                        n_gt=int(sum(len(g) for g in gts_t[c])), curve=[[float(a), float(b)] for a, b in curve[::max(1, len(curve) // 200)]])
     return dict(thr=[t / 255 for t in thr], aupr=ap, dice=[float(x) for x in d], iou=[float(x) for x in i], det=det)

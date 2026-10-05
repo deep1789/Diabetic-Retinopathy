@@ -17,6 +17,6 @@ def predict(X):
 Pv = predict(np.load(W + 'les_valid_X.npy')); Yv = np.load(W + 'les_valid_Y.npy')
 Pt = predict(np.load(W + 'les_test_X.npy')); Yt = np.load(W + 'les_test_Y.npy')
 np.save(W + f'probs_test_{v}.npy', Pt)
-res = full_eval(Pv, Yv, Pt, Yt, np.load(W + 'les_test_B.npy', allow_pickle=True)); res['variant'] = v
+res = full_eval(Pv, Yv, Pt, Yt, np.load(W + 'les_test_B.npy', allow_pickle=True), np.load(W + 'les_valid_B.npy', allow_pickle=True)); res['variant'] = v
 json.dump(res, open(W + f'res/seg_{v}.json', 'w'), indent=1)
 print(v, 'AUPR', [round(a, 3) for a in res['aupr']], 'Dice', [round(a, 3) for a in res['dice']])
