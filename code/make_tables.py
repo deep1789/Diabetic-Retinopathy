@@ -7,7 +7,10 @@ SV = [('morph', 'Top-hat + threshold (classical)'), ('bce', r'U-Net, BCE'), ('bc
 f3 = lambda x: f'{x:.3f}'
 def bold(vals, i, fmt=f3, hi=True):
     best = max(vals) if hi else min(vals); s = fmt(vals[i]); return r'\textbf{' + s + '}' if abs(vals[i] - best) < 1e-12 else s
-def write(name, s): open(T + name, 'w').write(s); print('wrote', name)
+def write(name, s):
+    if s.count(r'\begin{tabular}') == 1 and name != '../numbers.tex':       # scale wide tables to the text width
+        s = s.replace(r'\begin{tabular}', '\\resizebox{\\textwidth}{!}{%\n\\begin{tabular}', 1).replace(r'\end{tabular}', r'\end{tabular}}', 1)
+    open(T + name, 'w').write(s); print('wrote', name)
 
 # ------------------------------------------------------------------ segmentation
 S = {v: json.load(open(W + f'res/seg_{v}.json')) for v, _ in SV if os.path.exists(W + f'res/seg_{v}.json')}

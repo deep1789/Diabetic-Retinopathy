@@ -3,6 +3,7 @@
 \caption{Zero-shot external test on the Gaussian-filtered APTOS-derived Kaggle set (3664 images, $224\times224$, grades 0--4): models trained on DDR only, no adaptation (mean $\pm$ SD over 5 seeds). Lesion evidence is computed by the segmentation network applied to the up-sampled images.}
 \label{tab:external}
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lccccc@{}}
 \toprule
 Model & QWK & Acc. & F1 & AUC$_{\ge2}$ & Rule viol. \\
@@ -17,5 +18,5 @@ T2: T0 + rule loss & 0.227$\pm$0.103 & 0.408$\pm$0.069 & 0.206$\pm$0.042 & 0.731
 \textbf{\mname\ (full)} & 0.176$\pm$0.174 & 0.381$\pm$0.079 & 0.199$\pm$0.035 & 0.657$\pm$0.147 & 0.022$\pm$0.011 \\
 A1: \mname\ w/o evidence tokens & 0.172$\pm$0.111 & 0.452$\pm$0.066 & 0.215$\pm$0.039 & 0.648$\pm$0.052 & 0.023$\pm$0.010 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}

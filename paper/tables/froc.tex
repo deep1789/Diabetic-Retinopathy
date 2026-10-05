@@ -3,20 +3,26 @@
 \caption{Lesion-level FROC sensitivity of segmentation-derived detections (a prediction is a hit if its centre lies inside a ground-truth box) at 1, 2, 4, 8 and 16 false positives per image (FP/img), DDR test split.}
 \label{tab:froc}
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llccccc@{}}
 \toprule
 Proposals from & Class & 1 & 2 & 4 & 8 & 16 \\
 \midrule
-Top-hat + threshold (classical) & MA & 0.000 & 0.002 & 0.010 & 0.046 & 0.092 \\
- & HE & 0.003 & 0.009 & 0.036 & 0.079 & 0.123 \\
- & EX & 0.005 & 0.012 & 0.030 & 0.064 & 0.117 \\
- & SE & 0.019 & 0.019 & 0.051 & 0.131 & 0.224 \\
+Top-hat + threshold (classical) & MA & 0.000 & 0.001 & 0.004 & 0.014 & 0.040 \\
+ & HE & 0.003 & 0.007 & 0.028 & 0.076 & 0.135 \\
+ & EX & 0.004 & 0.011 & 0.027 & 0.058 & 0.113 \\
+ & SE & 0.019 & 0.019 & 0.056 & 0.136 & 0.234 \\
 \addlinespace
-U-Net, focal Tversky, GF input (ours) & MA & 0.066 & 0.116 & 0.210 & 0.318 & 0.414 \\
- & HE & 0.148 & 0.194 & 0.250 & 0.311 & 0.316 \\
- & EX & 0.112 & 0.170 & 0.249 & 0.322 & 0.372 \\
- & SE & 0.374 & 0.430 & 0.435 & 0.435 & 0.435 \\
+U-Net, BCE & MA & 0.032 & 0.056 & 0.090 & 0.119 & 0.131 \\
+ & HE & 0.111 & 0.147 & 0.188 & 0.229 & 0.229 \\
+ & EX & 0.128 & 0.178 & 0.233 & 0.282 & 0.282 \\
+ & SE & 0.257 & 0.332 & 0.379 & 0.421 & 0.449 \\
+\addlinespace
+U-Net, focal Tversky, GF input & MA & 0.067 & 0.115 & 0.209 & 0.319 & 0.412 \\
+ & HE & 0.150 & 0.194 & 0.250 & 0.309 & 0.351 \\
+ & EX & 0.115 & 0.178 & 0.254 & 0.330 & 0.373 \\
+ & SE & 0.379 & 0.425 & 0.458 & 0.458 & 0.458 \\
 \addlinespace
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}

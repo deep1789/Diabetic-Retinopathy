@@ -67,9 +67,9 @@ Fig.~\ref{fig:arch} shows the overall pipeline. The segmentation network is trai
 
 \subsection{Lesion segmentation network}
 \label{sec:seg}
-\paragraph{Architecture.} The segmenter $f_\phi$ is a U-Net \citep{ronneberger2015} with a ResNet-18 encoder \citep{he2016resnet} initialised from ImageNet weights (as distributed in \texttt{timm} \citep{wightman2019timm}). The encoder produces features at strides 2, 4, 8, 16 and 32; the decoder upsamples bilinearly and fuses encoder features by concatenation followed by two $3\times3$ convolution--BN--ReLU blocks (widths 128, 96, 64, 48). Because micro-aneurysms are only a few pixels wide, stride-2 features are not sufficient, and we add a shallow \emph{full-resolution branch} (two $3\times3$ conv--BN--ReLU blocks with 16 channels applied directly to the input) whose output is concatenated with the upsampled decoder output before a final $3\times3$ block and a $1\times1$ convolution to four logits. The network has 11.8\,M parameters.
+\paragraph{Architecture} The segmenter $f_\phi$ is a U-Net \citep{ronneberger2015} with a ResNet-18 encoder \citep{he2016resnet} initialised from ImageNet weights (as distributed in \texttt{timm} \citep{wightman2019timm}). The encoder produces features at strides 2, 4, 8, 16 and 32; the decoder upsamples bilinearly and fuses encoder features by concatenation followed by two $3\times3$ convolution--BN--ReLU blocks (widths 128, 96, 64, 48). Because micro-aneurysms are only a few pixels wide, stride-2 features are not sufficient, and we add a shallow \emph{full-resolution branch} (two $3\times3$ conv--BN--ReLU blocks with 16 channels applied directly to the input) whose output is concatenated with the upsampled decoder output before a final $3\times3$ block and a $1\times1$ convolution to four logits. The network has 11.8\,M parameters.
 
-\paragraph{Objective.} Let $p_c=\sigma(\ell_c)$ be the predicted probability map and $y_c$ the binary mask of class $c$. We compare three objectives:
+\paragraph{Objective} Let $p_c=\sigma(\ell_c)$ be the predicted probability map and $y_c$ the binary mask of class $c$. We compare three objectives:
 \begin{align}
 \mathcal L_{\mathrm{bce}} &= \tfrac14\textstyle\sum_{c}\mathrm{BCE}(p_c,y_c),\\
 \mathcal L_{\mathrm{bce+dice}} &= \tfrac14\textstyle\sum_{c}\big[\mathrm{BCE}_w(p_c,y_c) + \mathcal L_{\mathrm{Dice}}(p_c,y_c)\big],\\
@@ -82,7 +82,7 @@ where $\mathrm{BCE}_w$ weights positive pixels by $w=(20,6,6,8)$ for (MA, HE, EX
 \end{equation}
 with $\mathrm{TP}_c=\sum p_c y_c$, $\mathrm{FP}_c=\sum p_c(1-y_c)$, $\mathrm{FN}_c=\sum(1-p_c)y_c$ computed over the mini-batch, $\alpha=0.3$, $\beta=0.7$ and $\gamma=0.75$. Since $\beta>\alpha$, missed lesion pixels cost more than spurious ones, which is the desirable bias for screening where recall of small lesions dominates; $\gamma<1$ gives larger gradients to well-classified classes than the plain Tversky loss, and keeps the loss sensitive when overlap is already moderate. $\mathcal L_{\mathrm{seg}}$ is the default objective used below; $\mathcal L_{\mathrm{bce}}$ and $\mathcal L_{\mathrm{bce+dice}}$ are the ablation baselines. We make no a-priori claim that the focal Tversky objective is superior to Dice: Section~\ref{sec:res-seg} reports the comparison.
 
-\paragraph{Lesion-centred sampling and optimisation.} Positive pixels are less than 1\% of all pixels. Each training crop ($256\times256$) is, with probability 0.7, positioned around a pixel of a randomly chosen lesion class in an image containing that class (the offset of the lesion inside the crop is random), and with probability 0.3 sampled uniformly. We use random flips, $90^\circ$ rotations and brightness/contrast jitter. Optimisation uses AdamW \citep{loshchilov2019adamw} with weight decay $10^{-4}$, one-cycle learning-rate schedule (peak $10^{-3}$, 15\% warm-up), batches of 8 crops, 48 iterations per epoch, 30 epochs and bfloat16 autocast on CPU (Alg.~\ref{alg:seg}). The checkpoint with the highest mean AUPR on the lesion-validation split (evaluated every five epochs at the full $512\times512$ resolution) is retained.
+\paragraph{Lesion-centred sampling and optimisation} Positive pixels are less than 1\% of all pixels. Each training crop ($256\times256$) is, with probability 0.7, positioned around a pixel of a randomly chosen lesion class in an image containing that class (the offset of the lesion inside the crop is random), and with probability 0.3 sampled uniformly. We use random flips, $90^\circ$ rotations and brightness/contrast jitter. Optimisation uses AdamW \citep{loshchilov2019adamw} with weight decay $10^{-4}$, one-cycle learning-rate schedule (peak $10^{-3}$, 15\% warm-up), batches of 8 crops, 48 iterations per epoch, 30 epochs and bfloat16 autocast on CPU (Alg.~\ref{alg:seg}). The checkpoint with the highest mean AUPR on the lesion-validation split (evaluated every five epochs at the full $512\times512$ resolution) is retained.
 
 \begin{algorithm}[!htbp]
 \caption{Lesion-centred training of the segmentation network.}
@@ -129,9 +129,9 @@ For a class $c$ and image, the probability map $P_c$ is thresholded at a class-s
 \label{sec:evidence}
 The grading head does not see $P$ directly; it sees a compact, interpretable summary computed as follows.
 
-\paragraph{Zones.} Let $h=w=128$ and let $\tilde P=\mathrm{maxpool}_{4}(P)\in[0,1]^{4\times h\times w}$. Max-pooling (rather than average pooling) keeps the peak of a one-pixel microaneurysm. We define six zones with binary masks $\Omega_z$ on the $h\times w$ grid, restricted to the circular field of view of radius $0.5h-2$: four quadrants (split by the horizontal and vertical lines through the image centre), a central disc of radius $0.35\cdot(h/2)$ approximating the macular region, and the whole field. Because the cropped photographs are approximately centred on the optic disc--macula axis, quadrants are a pragmatic stand-in for the ETDRS/ICDR quadrant definition; we do not claim anatomical registration.
+\paragraph{Zones} Let $h=w=128$ and let $\tilde P=\mathrm{maxpool}_{4}(P)\in[0,1]^{4\times h\times w}$. Max-pooling (rather than average pooling) keeps the peak of a one-pixel microaneurysm. We define six zones with binary masks $\Omega_z$ on the $h\times w$ grid, restricted to the circular field of view of radius $0.5h-2$: four quadrants (split by the horizontal and vertical lines through the image centre), a central disc of radius $0.35\cdot(h/2)$ approximating the macular region, and the whole field. Because the cropped photographs are approximately centred on the optic disc--macula axis, quadrants are a pragmatic stand-in for the ETDRS/ICDR quadrant definition; we do not claim anatomical registration.
 
-\paragraph{Soft counts.} Counting connected components is not differentiable and is unstable under thresholding. Instead, for threshold levels $\tau\in\{0.25,0.5,0.75\}$ we compute
+\paragraph{Soft counts} Counting connected components is not differentiable and is unstable under thresholding. Instead, for threshold levels $\tau\in\{0.25,0.5,0.75\}$ we compute
 \begin{equation}
 n_{c,z}^{(\tau)}=\sum_{u\in\Omega_z}\sigma\!\Big(\frac{\tilde P_c(u)-\tau}{T}\Big),\qquad T=0.05,
 \label{eq:softcount}
@@ -190,14 +190,14 @@ R_4&=R_2,\label{eq:r4}
 where $\theta_c$ in Eq.~\eqref{eq:r1} denotes the thresholds $\theta_1,\dots,\theta_4$ for $c=\ma,\he,\ex,\se$. The four rules read as follows. $R_1$: some lesion is visible (needed for mild DR or worse). $R_2$: lesions beyond a few microaneurysms are visible (needed for moderate or worse). $R_3$: haemorrhages in all four quadrants, \emph{or} extensive soft exudates (a soft proxy for the ``4'' of the 4--2--1 rule; needed for severe or worse). $R_4$: proliferative DR is never lesion-free.
 Venous beading, IRMA and neovascularisation are not annotated in DDR, so $R_3$ is only a partial surrogate and $R_4$ imposes just a weak necessary condition. We stress that these rules are \emph{necessary conditions} (``$y\ge k\Rightarrow R_k$''), not sufficient ones: a grade may be lower than the lesions allow, but never higher.
 
-\paragraph{Calibrating thresholds on labels.} Because the predicted lesion statistics are noisy, hand-set thresholds would be arbitrary. We therefore fit $\theta$ once on the training labels by minimising
+\paragraph{Calibrating thresholds on labels} Because the predicted lesion statistics are noisy, hand-set thresholds would be arbitrary. We therefore fit $\theta$ once on the training labels by minimising
 \begin{equation}
 \mathcal L_{\mathrm{fit}}(\theta)=\sum_{k=1}^{4}\Big[\E_{i:\,y_i\ge k}\big(1-R_k(Z_i;\theta)\big)+\tfrac12\,\E_{i:\,y_i<k}R_k(Z_i;\theta)\Big],
 \label{eq:rulefit}
 \end{equation}
 that is, the rule should hold for images whose grade is at least $k$ (first term), and should not hold trivially for lesion-poor images (second term, which prevents $R_k\equiv1$). The parameters are then frozen. The rules are thus \emph{clinically inspired, data-calibrated templates}, not a re-implementation of the grading guideline.
 
-\paragraph{Rule-consistency loss and violation rate.} The grading head is trained with
+\paragraph{Rule-consistency loss and violation rate} The grading head is trained with
 \begin{equation}
 \mathcal L=\mathcal L_{\mathrm{ord}}+\lambda\,\mathcal L_{\mathrm{rule}},\qquad
 \mathcal L_{\mathrm{rule}}=\frac14\sum_{k=1}^4\mathrm{ReLU}\big(\hat F_k-R_k(Z;\theta)\big)^2,\quad\lambda=1,
@@ -225,9 +225,9 @@ so that the predicted probability of grade $\ge k$ is pushed below the rule scor
 
 \subsection{Calibration and split-conformal referral}
 \label{sec:conformal}
-\paragraph{Temperature scaling.} On validation half A we fit a single temperature $T^\star\in[0.5,3]$ that minimises the negative log-likelihood of the class probabilities obtained from the logits $s_k/T$ \citep{guo2017calibration}; this changes confidences but not predicted grades. Expected calibration error (ECE) is computed with 15 equal-width confidence bins.
+\paragraph{Temperature scaling} On validation half A we fit a single temperature $T^\star\in[0.5,3]$ that minimises the negative log-likelihood of the class probabilities obtained from the logits $s_k/T$ \citep{guo2017calibration}; this changes confidences but not predicted grades. Expected calibration error (ECE) is computed with 15 equal-width confidence bins.
 
-\paragraph{Split-conformal sets.} Let $\hat p(x)\in\Delta^4$ denote the calibrated class probabilities. On validation half B (calibration set of size $n$, disjoint from model selection and temperature fitting), we define the nonconformity score $\varsigma_i=1-\hat p_{y_i}(x_i)$ and the threshold
+\paragraph{Split-conformal sets} Let $\hat p(x)\in\Delta^4$ denote the calibrated class probabilities. On validation half B (calibration set of size $n$, disjoint from model selection and temperature fitting), we define the nonconformity score $\varsigma_i=1-\hat p_{y_i}(x_i)$ and the threshold
 \begin{equation}
 \hat q_\alpha=\varsigma_{(\lceil(n+1)(1-\alpha)\rceil)},\qquad
 \mathcal C_\alpha(x)=\{j:\ 1-\hat p_j(x)\le\hat q_\alpha\},

@@ -1,1 +1,29 @@
-TODO
+\section{Results}
+\label{sec:results}
+We report segmentation and detection first (Sections~\ref{sec:res-seg} and~\ref{sec:res-det}), since they determine the quality of the lesion evidence, then the grading results (Sections~\ref{sec:res-evidence}--\ref{sec:res-ext}), the end-to-end reference (Section~\ref{sec:res-ft}) and computational cost (Section~\ref{sec:res-cost}). Unless stated otherwise, segmentation and detection use the 225-image DDR lesion-test split, and grading uses the leak-controlled test set of 3633 gradable images.
+
+\input{sections/results_seg}
+\input{sections/results_grading}
+\input{sections/results_ft}
+
+\subsection{Computational cost}
+\label{sec:res-cost}
+Table~\ref{tab:cost} summarises measured costs on the four-core CPU machine. Training the segmentation network for 30 epochs takes about 23 minutes (45 seconds per epoch) with bfloat16 autocast; inference at $512\times512$ runs at about 0.12 seconds per image (8 images per second) for the network alone and about 3 images per second end-to-end, including decoding of the original 2-megapixel JPEG files, resizing and filtering, which is how the lesion maps for all \num{13673} DDR images were produced in roughly 75 minutes. The grading stage is negligible in comparison: the token head has 0.14\,M parameters and each of its training runs took a few minutes on a single core (while sharing the machine with other jobs), and evidence extraction for thousands of images takes seconds. The cost of \mname\ over the embedding-only baselines is therefore dominated by one segmentation pass per image. These timings are specific to this machine and are given to show that the whole study is reproducible without a GPU.
+
+\begin{table}[!htbp]
+\centering
+\caption{Model sizes and measured costs (four CPU cores, bfloat16 autocast where applicable).}
+\label{tab:cost}
+\small
+\begin{tabular}{@{}llrl@{}}
+\toprule
+Component & Role & Parameters & Measured cost \\
+\midrule
+U-Net (ResNet-18 + full-res branch) & lesion segmentation & 11.8\,M & train 23 min; 0.12 s/image at $512^2$ \\
+ConvNeXt-T (frozen) & image embedding & 27.8\,M & feature extraction, 256$^2$ \\
+MLP baselines (B1, B2, B4) & grading & 0.30\,M & seconds per run \\
+Evidence MLP (B3) & grading & 0.016\,M & seconds per run \\
+Evidence-token head (\mname) & grading & 0.14\,M & a few min per run (1 core) \\
+\bottomrule
+\end{tabular}
+\end{table}

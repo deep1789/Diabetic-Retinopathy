@@ -1,0 +1,56 @@
+\subsection{Lesion segmentation}
+\label{sec:res-seg}
+Table~\ref{tab:seg} compares the five segmentation systems on the 225 DDR test images, and Fig.~\ref{fig:seg-qual} shows examples. Training curves are in Fig.~\ref{fig:seg-curves}.
+
+\paragraph{Learned versus classical} The classical top-hat baseline is nearly useless at this resolution (mean AUPR \nSegAUPRMorph), which is expected for hand-crafted detectors on fundus images with illumination changes, vessels and the optic disc. All four U-Net variants are an order of magnitude better (mean AUPR 0.30--0.38).
+
+\paragraph{Loss function} Plain cross-entropy fails on the smallest and rarest lesions: its AUPR for microaneurysms is only 0.025 (Dice 0.054), compared with 0.156--0.172 for the three class-weighted overlap objectives, and its mean AUPR is \nSegAUPRBce\ versus 0.361--0.382. For hard exudates, which are frequent and large, cross-entropy is competitive (AUPR 0.588, the highest in the table). The three overlap-based objectives are close to each other. BCE+Dice has the highest mean AUPR (\nSegAUPRBcedice) and the focal Tversky objective the highest mean Dice at the validation-optimal threshold (\nSegDiceFtl\ raw input, \nSegDiceFtlbg\ with Gaussian-filtered input, versus \nSegDiceBcedice\ for BCE+Dice). Since every row is a single run, we do not claim that any of the three is better than the others; the robust conclusion is that \emph{a class-weighted overlap term is necessary for micro-aneurysms and soft exudates}, whereas the specific form (Dice or focal Tversky) is of second order in our experiment. We stress this because the focal Tversky loss was our default choice and it did not prove superior.
+
+\paragraph{Gaussian-filtered input} Feeding the Gaussian-filtered image to the segmenter (``GF'') gives practically the same performance as the raw image (mean AUPR \nSegAUPRFtlbg\ vs.\ \nSegAUPRFtl; mean Dice \nSegDiceFtlbg\ vs.\ \nSegDiceFtl), with small per-class differences of both signs (microaneurysm AUPR 0.172 vs.\ 0.156; haemorrhage 0.436 vs.\ 0.470). The GF variant was used for all downstream grading experiments because it matches the preprocessing of the external Kaggle set.
+
+\paragraph{Class difficulty} The ranking of classes is stable across variants: exudates (AUPR 0.55--0.59) and haemorrhages (0.40--0.47) are segmented best, soft exudates are intermediate and variable (0.20--0.32), and microaneurysms are the hardest (at most 0.17 AUPR and 0.29 Dice). Microaneurysms are about 10 native pixels wide at the median and about 4--5 pixels at the 10th percentile (Section~\ref{sec:ddr}); after resizing to $512\times512$ most of them are one to three pixels wide, so part of the difficulty is a consequence of our compute-driven resolution choice. Examples in Fig.~\ref{fig:seg-qual} show that the models capture the large-scale layout of exudates and haemorrhages well and typically over-segment (merge neighbouring lesions) or miss isolated small lesions. Fig.~\ref{fig:froc-pr} shows precision--recall curves per class.
+
+\paragraph{Validation versus test} Validation AUPR of the focal Tversky models (mean 0.53--0.54 at the selected checkpoints) is much higher than their test AUPR (0.36--0.37). As with the grading partitions (Section~\ref{sec:res-conf}), the official partitions of the lesion subset therefore differ in difficulty and composition (for example, the lesion-test split has 6457 haemorrhage boxes in 225 images, against 4739 in the 383 training images), and results tuned on validation data are optimistic.
+
+\input{tables/seg}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=.95\textwidth]{fig_seg_qual.pdf}
+\caption{Qualitative segmentation results on four DDR test images (crops of $192\times192$ pixels containing many lesions), with predictions thresholded at each model's validation-optimal threshold. Columns: input, ground truth, and the four U-Net variants. Colours: MA green, HE red, EX yellow, SE blue.}
+\label{fig:seg-qual}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_seg_curves.pdf}
+\caption{Segmentation training. (a) Training loss (objectives differ in scale and are not comparable across methods). (b) Mean AUPR over the four lesion classes on the lesion-validation split at the evaluation epochs.}
+\label{fig:seg-curves}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_froc_pr.pdf}
+\caption{Per-class precision--recall curves of pixel probabilities (top) and lesion-level FROC curves of segmentation-derived detections (bottom; false positives per image on a symmetric-log axis), DDR test split.}
+\label{fig:froc-pr}
+\end{figure}
+
+\subsection{Lesion detection}
+\label{sec:res-det}
+Tables~\ref{tab:det} and~\ref{tab:froc} report the detections obtained from the segmentation maps (Alg.~\ref{alg:det}), and Fig.~\ref{fig:det-qual} shows examples.
+
+\paragraph{Overall level} Detection through connected-component proposals is weak at the standard IoU of 0.5, and moderate at relaxed overlap. The mean AP at IoU 0.3 is \nDetMapFtlbg\ for the GF variant (\nDetMapFtl\ raw; \nDetMapBcedice\ BCE+Dice; \nDetMapBce\ BCE; \nDetMapMorph\ for the classical baseline). At IoU 0.5 the AP of micro-aneurysms is below 0.01: a box that is one or two pixels off in each direction already drops below the threshold, which is a property of the metric on tiny objects more than of the detector, and the AP of haemorrhages and exudates is 0.06--0.08. Soft exudates reach AP$_{0.5}$ of 0.155--0.168, in line with their larger size but with only 214 test boxes the estimate is noisy.
+
+\paragraph{FROC} At 8 false positives per image, the sensitivities of the best models are about 0.29--0.32 for microaneurysms, 0.31--0.32 for haemorrhages, 0.31--0.34 for exudates and 0.43--0.46 for soft exudates (Table~\ref{tab:froc}); they saturate at 16 false positives per image (0.32--0.41), which reflects that lesions missed by the segmentation (and therefore never proposed) bound the recall. The ordering of segmentation variants is the same as in segmentation: the plain cross-entropy model is clearly worse (mAP$_{0.3}$ 0.109) and the other three are close (0.161--0.168).
+
+\paragraph{Why detection is hard here} Several factors explain the low numbers: (i) very high lesion density (the test images have 76 boxes on average), so adjacent lesions merge into one connected component; (ii) boxes of the order of 10 pixels or less; (iii) annotation boxes derived from pixel masks, which are not independent of segmentation errors; and (iv) the use of a seed threshold selected on validation AP$_{0.3}$ (the selected seeds differ widely between classes, 0.05--0.71, indicating that the probability maps are not calibrated across classes). We did not train a dedicated detector (Section~\ref{sec:setup}), so we cannot say how this approach compares with Faster R-CNN or FCOS; the value of the segmentation-derived route is that it requires no additional training and shares weights with the other tasks.
+
+\input{tables/det}
+\input{tables/froc}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=.9\textwidth]{fig_det_qual.pdf}
+\caption{Segmentation-derived detections (GF model) on three DDR test images: ground-truth boxes (white) and predicted boxes (HE red, EX yellow, MA green; predictions with low score are hidden for legibility). Top: haemorrhages and exudates; bottom: microaneurysms in a magnified region.}
+\label{fig:det-qual}
+\end{figure}

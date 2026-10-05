@@ -4,6 +4,7 @@
 \label{tab:grading}
 \footnotesize
 \setlength{\tabcolsep}{2.8pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lcccccccc@{}}
 \toprule
 Model & QWK & 95\% CI & Acc. & F1 & AUC$_{\ge2}$ & ECE & Rule viol. & $\Delta$QWK \\
@@ -18,5 +19,5 @@ T2: T0 + rule loss & 0.729$\pm$0.017 & [0.714, 0.753] & 0.745$\pm$0.008 & 0.457$
 \textbf{\mname\ (full)} & 0.734$\pm$0.009 & [0.714, 0.754] & 0.745$\pm$0.011 & 0.464$\pm$0.018 & 0.923$\pm$0.004 & 0.057$\pm$0.003 & 0.045$\pm$0.008 & -- \\
 A1: \mname\ w/o evidence tokens & 0.632$\pm$0.015 & [0.618, 0.664] & 0.682$\pm$0.003 & 0.408$\pm$0.017 & 0.851$\pm$0.006 & 0.088$\pm$0.009 & 0.041$\pm$0.008 & +0.093 [+0.077, +0.109]$^{*}$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
