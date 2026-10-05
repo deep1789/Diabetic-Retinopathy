@@ -3,7 +3,7 @@ import sys, json, os, numpy as np
 W = '/home/user/work/'; T = '/home/user/Diabetic-Retinopathy/paper/tables/'
 SEG, BB = sys.argv[1], sys.argv[2]; MAINSEG = sys.argv[3] if len(sys.argv) > 3 else SEG
 CN = ['MA', 'HE', 'EX', 'SE']
-SV = [('morph', 'Top-hat + threshold (classical)'), ('bce', r'U-Net, BCE'), ('bcedice', r'U-Net, BCE+Dice'), ('ftl', r'U-Net, focal Tversky (ours)'), ('ftlbg', r'U-Net, focal Tversky, GF input (ours)')]
+SV = [('morph', 'Top-hat + threshold (classical)'), ('bce', r'U-Net, BCE'), ('bcedice', r'U-Net, BCE+Dice'), ('ftl', r'U-Net, focal Tversky (default)'), ('ftlbg', r'U-Net, focal Tversky, GF input')]
 f3 = lambda x: f'{x:.3f}'
 def bold(vals, i, fmt=f3, hi=True):
     best = max(vals) if hi else min(vals); s = fmt(vals[i]); return r'\textbf{' + s + '}' if abs(vals[i] - best) < 1e-12 else s

@@ -3,7 +3,7 @@ import sys, json, os, numpy as np, cv2, torch
 from figstyle import *
 W = '/home/user/work/'
 VAR = [('morph', 'Top-hat (classical)', C['mute']), ('bce', 'U-Net, BCE', C['orange']), ('bcedice', 'U-Net, BCE+Dice', C['aqua']),
-       ('ftl', 'U-Net, focal Tversky (ours)', C['blue']), ('ftlbg', 'U-Net, focal Tversky + GF', C['violet'])]
+       ('ftl', 'U-Net, focal Tversky', C['blue']), ('ftlbg', 'U-Net, focal Tversky + GF', C['violet'])]
 CN = ['MA', 'HE', 'EX', 'SE']
 which = sys.argv[1]
 have = lambda v: os.path.exists(W + f'res/seg_{v}.json')
@@ -31,7 +31,7 @@ def seg_qual():
         o = im.copy()
         for c in range(4): o[M[c]] = cols[c]
         return o
-    names = {'bce': 'BCE', 'bcedice': 'BCE+Dice', 'ftl': 'Focal Tversky\n(ours)', 'ftlbg': 'Focal Tversky\n+GF (ours)'}
+    names = {'bce': 'BCE', 'bcedice': 'BCE+Dice', 'ftl': 'Focal Tversky', 'ftlbg': 'Focal Tversky\n+GF'}
     for r, i in enumerate(pick):
         im = np.array(X[i]); gt = np.array(Y[i]).astype(bool)
         m = gt.any(0).astype(np.float32); ii = cv2.integral(m); best = (-1, 0, 0)
