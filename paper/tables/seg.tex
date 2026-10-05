@@ -1,0 +1,17 @@
+\begin{table}[!htbp]
+\centering
+\caption{Lesion segmentation on the DDR test split (225 images, $512\times512$). AUPR is threshold-free; Dice and IoU are computed at the per-class threshold that maximises validation Dice and accumulated over all test pixels. GF = Gaussian-filtered input. Single training run per row (seed 0); best value per column in bold.}
+\label{tab:seg}
+\small
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lccccc|ccccc|c@{}}
+\toprule
+ & \multicolumn{5}{c|}{AUPR} & \multicolumn{5}{c|}{Dice} & mIoU \\
+Method & MA & HE & EX & SE & Mean & MA & HE & EX & SE & Mean & \\
+\midrule
+Top-hat + threshold (classical) & 0.001 & 0.025 & 0.058 & 0.006 & 0.023 & 0.003 & 0.063 & 0.097 & 0.017 & 0.045 & 0.024 \\
+U-Net, focal Tversky (ours) & 0.156 & \textbf{0.470} & 0.551 & 0.267 & 0.361 & 0.273 & \textbf{0.501} & 0.586 & 0.370 & 0.432 & 0.283 \\
+U-Net, focal Tversky, GF input (ours) & \textbf{0.172} & 0.436 & \textbf{0.562} & \textbf{0.290} & \textbf{0.365} & \textbf{0.292} & 0.467 & \textbf{0.597} & \textbf{0.403} & \textbf{0.440} & \textbf{0.288} \\
+\bottomrule
+\end{tabular}
+\end{table}

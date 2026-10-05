@@ -1,1 +1,21 @@
-
+\begin{table}[h]
+\centering
+\caption{Sensitivity to the leak control: QWK (mean $\pm$ SD over 5 seeds) on the leak-controlled test set (3633 images) versus the full official gradable test partition (3759 images).}
+\label{tab:sens}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Model & Leak-controlled & Full official test \\
+\midrule
+B1: embedding, CE & 0.644$\pm$0.009 & 0.641$\pm$0.009 \\
+B2: embedding, ordinal & 0.638$\pm$0.010 & 0.637$\pm$0.010 \\
+B3: evidence only & 0.641$\pm$0.003 & 0.646$\pm$0.003 \\
+B4: embedding + evidence (concat.) & 0.722$\pm$0.011 & 0.723$\pm$0.010 \\
+T0: evidence tokens & 0.722$\pm$0.014 & 0.722$\pm$0.014 \\
+T1: T0 + soft labels & 0.732$\pm$0.014 & 0.731$\pm$0.014 \\
+T2: T0 + rule loss & 0.729$\pm$0.017 & 0.729$\pm$0.017 \\
+\textbf{\mname\ (full)} & 0.734$\pm$0.009 & 0.733$\pm$0.009 \\
+A1: \mname\ w/o evidence tokens & 0.632$\pm$0.015 & 0.629$\pm$0.016 \\
+\bottomrule
+\end{tabular}
+\end{table}

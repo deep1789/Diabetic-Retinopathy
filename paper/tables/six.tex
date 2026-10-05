@@ -1,0 +1,21 @@
+\begin{table}[!htbp]
+\centering
+\caption{Six-class protocol (ungradable images included) on the leak-controlled test set: a separate quality gate decides ``ungradable; otherwise the ordinal grade is output. Mean $\pm$ SD over 5 seeds.}
+\label{tab:six}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Model & Accuracy & Macro-F1 & Gate AUC \\
+\midrule
+B1: embedding, CE & 0.692$\pm$0.005 & 0.488$\pm$0.012 & 0.995$\pm$0.000 \\
+B2: embedding, ordinal & 0.676$\pm$0.004 & 0.495$\pm$0.007 & 0.995$\pm$0.000 \\
+B3: evidence only & 0.678$\pm$0.006 & 0.505$\pm$0.004 & 0.995$\pm$0.000 \\
+B4: embedding + evidence (concat.) & 0.726$\pm$0.006 & 0.543$\pm$0.006 & 0.995$\pm$0.000 \\
+T0: evidence tokens & 0.736$\pm$0.007 & 0.530$\pm$0.012 & 0.995$\pm$0.000 \\
+T1: T0 + soft labels & 0.735$\pm$0.007 & 0.532$\pm$0.011 & 0.995$\pm$0.000 \\
+T2: T0 + rule loss & 0.733$\pm$0.008 & 0.538$\pm$0.016 & 0.995$\pm$0.000 \\
+\textbf{\mname\ (full)} & 0.734$\pm$0.010 & 0.533$\pm$0.010 & 0.995$\pm$0.000 \\
+A1: \mname\ w/o evidence tokens & 0.669$\pm$0.003 & 0.482$\pm$0.011 & 0.995$\pm$0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -43,6 +43,18 @@ def conformal(pb, pt, alpha):
 conf = {n: [conformal(PB[n], P[n], a) for a in (0.05, 0.1, 0.2)] for n in [MAIN, 'B1 CE (img emb.)', 'B2 Ordinal (img emb.)', 'B4 Concat (emb.+evidence)'] if n in P}
 # hard-decision referral for reference (argmax >= 2)
 hard = {n: dict(sens=float((pred[n][yt >= 2] >= 2).mean()), spec=float((pred[n][yt < 2] < 2).mean())) for n in P}
-json.dump(dict(agg=agg, ci=ci, diff=diff, cm=cm.tolist(), per_class=dict(p=pr.tolist(), r=rc.tolist(), f1=f1.tolist(), n=sup.tolist()), adjacent_acc=adj, reliab=reliab, conformal=conf, hard_ref=hard, main=MAIN, n_test=int(N), n_calib=int(len(yb))),
+# partition shift: calibration half B vs test, and an exchangeable check (random halves of the test set)
+shift = {n: dict(valB_acc=float((PB[n].argmax(1) == yb).mean()), test_acc=float((P[n].argmax(1) == yt).mean()), valB_nll=float(-np.log(PB[n][np.arange(len(yb)), yb]).mean()),
+                 test_nll=float(-np.log(P[n][np.arange(len(yt)), yt]).mean()), valB_qwk=float(qwk(yb, PB[n].argmax(1))), test_qwk=float(qwk(yt, P[n].argmax(1)))) for n in [MAIN, 'B2 Ordinal (img emb.)']}
+def conf_split(p, alpha, reps=300):
+    rg = np.random.default_rng(1); cov, size, sens, spec = [], [], [], []
+    for _ in range(reps):
+        perm = rg.permutation(len(yt)); c, e = perm[:len(perm) // 2], perm[len(perm) // 2:]
+        s_ = 1 - p[c, yt[c]]; k = int(np.ceil((len(c) + 1) * (1 - alpha))); q = np.sort(s_)[min(k, len(c)) - 1]; sets = (1 - p[e]) <= q
+        cov.append(sets[np.arange(len(e)), yt[e]].mean()); size.append(sets.sum(1).mean()); rp = sets[:, 2:].any(1); rt = yt[e] >= 2
+        sens.append(rp[rt].mean()); spec.append((~rp[~rt]).mean())
+    return dict(alpha=alpha, coverage=[float(np.mean(cov)), float(np.std(cov))], size=float(np.mean(size)), ref_sens=float(np.mean(sens)), ref_spec=float(np.mean(spec)))
+conf_exch = {n: [conf_split(P[n], a_) for a_ in (0.05, 0.1, 0.2)] for n in [MAIN, 'B2 Ordinal (img emb.)', 'B4 Concat (emb.+evidence)'] if n in P}
+json.dump(dict(shift=shift, conf_exch=conf_exch, agg=agg, ci=ci, diff=diff, cm=cm.tolist(), per_class=dict(p=pr.tolist(), r=rc.tolist(), f1=f1.tolist(), n=sup.tolist()), adjacent_acc=adj, reliab=reliab, conformal=conf, hard_ref=hard, main=MAIN, n_test=int(N), n_calib=int(len(yb))),
           open(W + f'res/analysis_{SEG}_{BB}.json', 'w'), indent=1)
 print('main', MAIN, agg[MAIN]); print('CI', ci[MAIN]); print({n: round(v['mean'], 4) for n, v in diff.items()})

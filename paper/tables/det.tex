@@ -1,0 +1,17 @@
+\begin{table}[!htbp]
+\centering
+\caption{Lesion detection on the DDR test split from segmentation-derived proposals (Alg.~\ref{alg:det}). AP$_{0.5}$ / AP$_{0.3}$ are average precision at IoU 0.5 / 0.3; the last column is the mean of AP$_{0.3}$ over the four classes. The ground truth contains 2041 MA, 6457 HE, 8320 EX and 214 SE boxes.}
+\label{tab:det}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lcccccccc|c@{}}
+\toprule
+ & \multicolumn{2}{c}{MA} & \multicolumn{2}{c}{HE} & \multicolumn{2}{c}{EX} & \multicolumn{2}{c|}{SE} & \\
+Proposals from & AP$_{.5}$ & AP$_{.3}$ & AP$_{.5}$ & AP$_{.3}$ & AP$_{.5}$ & AP$_{.3}$ & AP$_{.5}$ & AP$_{.3}$ & mAP$_{.3}$ \\
+\midrule
+Top-hat + threshold (classical) & 0.000 & 0.002 & 0.006 & 0.023 & 0.015 & 0.038 & 0.002 & 0.004 & 0.017 \\
+U-Net, focal Tversky (ours) & 0.009 & 0.078 & 0.080 & 0.178 & 0.059 & 0.189 & 0.172 & 0.203 & 0.162 \\
+U-Net, focal Tversky, GF input (ours) & 0.008 & 0.088 & 0.080 & 0.176 & 0.064 & 0.201 & 0.166 & 0.197 & \textbf{0.165} \\
+\bottomrule
+\end{tabular}
+\end{table}

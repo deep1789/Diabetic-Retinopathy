@@ -1,0 +1,22 @@
+\begin{table}[!htbp]
+\centering
+\caption{Lesion-level FROC sensitivity of segmentation-derived detections (a prediction is a hit if its centre lies inside a ground-truth box) at 1, 2, 4, 8 and 16 false positives per image (FP/img), DDR test split.}
+\label{tab:froc}
+\small
+\begin{tabular}{@{}llccccc@{}}
+\toprule
+Proposals from & Class & 1 & 2 & 4 & 8 & 16 \\
+\midrule
+Top-hat + threshold (classical) & MA & 0.000 & 0.002 & 0.010 & 0.046 & 0.092 \\
+ & HE & 0.003 & 0.009 & 0.036 & 0.079 & 0.123 \\
+ & EX & 0.005 & 0.012 & 0.030 & 0.064 & 0.117 \\
+ & SE & 0.019 & 0.019 & 0.051 & 0.131 & 0.224 \\
+\addlinespace
+U-Net, focal Tversky, GF input (ours) & MA & 0.066 & 0.116 & 0.210 & 0.318 & 0.414 \\
+ & HE & 0.148 & 0.194 & 0.250 & 0.311 & 0.316 \\
+ & EX & 0.112 & 0.170 & 0.249 & 0.322 & 0.372 \\
+ & SE & 0.374 & 0.430 & 0.435 & 0.435 & 0.435 \\
+\addlinespace
+\bottomrule
+\end{tabular}
+\end{table}

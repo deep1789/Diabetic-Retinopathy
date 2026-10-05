@@ -1,0 +1,24 @@
+\begin{table}[!htbp]
+\centering
+\caption{Conformal coverage under exchangeability: the leak-controlled test set is split at random into a calibration half and an evaluation half (300 repetitions; mean $\pm$ SD). Compare with Table~\ref{tab:conformal}, where calibration used the DDR validation partition. ``Refer = set contains any grade $\ge2$.}
+\label{tab:conf-exch}
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Model & $\alpha$ & Coverage & Set size & Refer sens. & Refer spec. \\
+\midrule
+\textbf{\mname\ (full)} & 0.05 & 0.950$\pm$0.008 & 2.75 & 0.913 & 0.770 \\
+ & 0.1 & 0.900$\pm$0.011 & 1.90 & 0.845 & 0.876 \\
+ & 0.2 & 0.800$\pm$0.014 & 1.17 & 0.733 & 0.936 \\
+\addlinespace
+B2: embedding, ordinal & 0.05 & 0.950$\pm$0.007 & 2.29 & 0.952 & 0.444 \\
+ & 0.1 & 0.900$\pm$0.010 & 1.84 & 0.882 & 0.631 \\
+ & 0.2 & 0.799$\pm$0.013 & 1.33 & 0.726 & 0.839 \\
+\addlinespace
+B4: embedding + evidence (concat.) & 0.05 & 0.950$\pm$0.007 & 2.10 & 0.934 & 0.676 \\
+ & 0.1 & 0.899$\pm$0.010 & 1.64 & 0.871 & 0.813 \\
+ & 0.2 & 0.800$\pm$0.013 & 1.17 & 0.745 & 0.920 \\
+\addlinespace
+\bottomrule
+\end{tabular}
+\end{table}

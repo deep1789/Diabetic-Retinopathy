@@ -1,0 +1,22 @@
+\begin{table}[!htbp]
+\centering
+\caption{Five-class DR grading on the leak-controlled DDR test set (3633 gradable images), mean $\pm$ SD over 5 seeds. QWK 95\% CI: bootstrap over test images of the seed-averaged probabilities. $\Delta$QWK: paired bootstrap difference (\mname\ minus model), with 95\% interval; intervals excluding 0 are marked $^{*}$. Rule viol.: fraction of test images whose predicted grade is not licensed by the frozen rule scores (Section~\ref{sec:rule}).}
+\label{tab:grading}
+\footnotesize
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+Model & QWK & 95\% CI & Acc. & F1 & AUC$_{\ge2}$ & ECE & Rule viol. & $\Delta$QWK \\
+\midrule
+B1: embedding, CE & 0.644$\pm$0.009 & [0.623, 0.669] & 0.686$\pm$0.006 & 0.439$\pm$0.011 & 0.865$\pm$0.003 & 0.093$\pm$0.008 & 0.046$\pm$0.004 & +0.087 [+0.071, +0.103]$^{*}$ \\
+B2: embedding, ordinal & 0.638$\pm$0.010 & [0.616, 0.662] & 0.683$\pm$0.005 & 0.428$\pm$0.008 & 0.867$\pm$0.005 & 0.120$\pm$0.010 & 0.044$\pm$0.005 & +0.095 [+0.079, +0.111]$^{*}$ \\
+B3: evidence only & 0.641$\pm$0.003 & [0.619, 0.665] & 0.697$\pm$0.005 & 0.449$\pm$0.007 & 0.877$\pm$0.002 & 0.047$\pm$0.005 & 0.039$\pm$0.008 & +0.092 [+0.072, +0.112]$^{*}$ \\
+B4: embedding + evidence (concat.) & 0.722$\pm$0.011 & [0.702, 0.741] & 0.738$\pm$0.007 & 0.486$\pm$0.007 & 0.920$\pm$0.003 & 0.089$\pm$0.011 & 0.049$\pm$0.004 & +0.013 [+0.001, +0.025]$^{*}$ \\
+T0: evidence tokens & 0.722$\pm$0.014 & [0.706, 0.747] & 0.748$\pm$0.010 & 0.454$\pm$0.017 & 0.921$\pm$0.004 & 0.095$\pm$0.015 & 0.052$\pm$0.005 & +0.008 [+0.000, +0.017]$^{*}$ \\
+T1: T0 + soft labels & 0.732$\pm$0.014 & [0.714, 0.753] & 0.745$\pm$0.007 & 0.472$\pm$0.022 & 0.923$\pm$0.002 & 0.058$\pm$0.014 & 0.051$\pm$0.007 & +0.001 [-0.008, +0.010] \\
+T2: T0 + rule loss & 0.729$\pm$0.017 & [0.714, 0.753] & 0.745$\pm$0.008 & 0.457$\pm$0.025 & 0.921$\pm$0.005 & 0.090$\pm$0.012 & 0.044$\pm$0.008 & +0.001 [-0.007, +0.009] \\
+\textbf{\mname\ (full)} & 0.734$\pm$0.009 & [0.714, 0.754] & 0.745$\pm$0.011 & 0.464$\pm$0.018 & 0.923$\pm$0.004 & 0.057$\pm$0.003 & 0.045$\pm$0.008 & -- \\
+A1: \mname\ w/o evidence tokens & 0.632$\pm$0.015 & [0.618, 0.664] & 0.682$\pm$0.003 & 0.408$\pm$0.017 & 0.851$\pm$0.006 & 0.088$\pm$0.009 & 0.041$\pm$0.008 & +0.093 [+0.077, +0.109]$^{*}$ \\
+\bottomrule
+\end{tabular}
+\end{table}

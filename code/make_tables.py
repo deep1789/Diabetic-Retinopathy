@@ -65,6 +65,18 @@ if os.path.exists(AP):
         for i, c in enumerate(cv): L.append((short.get(n, n.replace('&', r'\&')) if i == 0 else '') + f" & {c['alpha']} & {c['coverage']:.3f} & {c['size']:.2f} & {c['singleton']:.2f} & {c['ref_sens']:.3f} & {c['ref_spec']:.3f} & {'/'.join(f'{x:.2f}' for x in c['cov_by_class'])} \\\\")
         L.append(r'\addlinespace')
     L += [r'\bottomrule', r'\end{tabular}', r'\end{table}']; write('conformal.tex', '\n'.join(L) + '\n')
+    # exchangeable conformal check and partition shift
+    L = [r'\begin{table}[!htbp]', r'\centering', r'\caption{Conformal coverage under exchangeability: the leak-controlled test set is split at random into a calibration half and an evaluation half (300 repetitions; mean $\pm$ SD). Compare with Table~\ref{tab:conformal}, where calibration used the DDR validation partition. ``Refer'' = set contains any grade $\ge2$.}', r'\label{tab:conf-exch}', r'\small',
+         r'\begin{tabular}{@{}llcccc@{}}', r'\toprule', r'Model & $\alpha$ & Coverage & Set size & Refer sens. & Refer spec. \\', r'\midrule']
+    for n, cv in A['conf_exch'].items():
+        for i, c in enumerate(cv): L.append((short.get(n, n.replace('&', r'\&')) if i == 0 else '') + f" & {c['alpha']} & {c['coverage'][0]:.3f}$\\pm${c['coverage'][1]:.3f} & {c['size']:.2f} & {c['ref_sens']:.3f} & {c['ref_spec']:.3f} \\\\")
+        L.append(r'\addlinespace')
+    L += [r'\bottomrule', r'\end{tabular}', r'\end{table}']; write('conf_exch.tex', '\n'.join(L) + '\n')
+    sh = A['shift']
+    L = [r'\begin{table}[!htbp]', r'\centering', r'\caption{Partition shift inside DDR: the same models evaluated on validation half B (the conformal calibration set, 1252 images) and on the leak-controlled test set (3633 images), seed-averaged probabilities. Class proportions are practically identical in the two sets.}', r'\label{tab:shift}', r'\small',
+         r'\begin{tabular}{@{}lcccc@{}}', r'\toprule', r'Model & Acc. (val B) & Acc. (test) & QWK (val B) & QWK (test) \\', r'\midrule']
+    for n, d in sh.items(): L.append(short.get(n, n) + f" & {d['valB_acc']:.3f} & {d['test_acc']:.3f} & {d['valB_qwk']:.3f} & {d['test_qwk']:.3f} \\\\")
+    L += [r'\bottomrule', r'\end{tabular}', r'\end{table}']; write('shift.tex', '\n'.join(L) + '\n')
     # leak sensitivity
     L = [r'\begin{table}[h]', r'\centering', r'\caption{Sensitivity to the leak control: QWK (mean $\pm$ SD over 5 seeds) on the leak-controlled test set (3633 images) versus the full official gradable test partition (3759 images).}', r'\label{tab:sens}', r'\small',
          r'\begin{tabular}{@{}lcc@{}}', r'\toprule', r'Model & Leak-controlled & Full official test \\', r'\midrule']
@@ -81,7 +93,7 @@ if os.path.exists(AP):
     N = {'MainQWK': f"{g['qwk'][0]:.3f}", 'MainQWKsd': f"{g['qwk'][1]:.3f}", 'MainCIlo': f"{A['ci'][main][0]:.3f}", 'MainCIhi': f"{A['ci'][main][1]:.3f}", 'MainAcc': f"{100 * g['acc'][0]:.1f}", 'MainAUC': f"{g['auc_ref'][0]:.3f}",
          'MainECE': f"{g['ece'][0]:.3f}", 'MainViol': f"{100 * g['viol'][0]:.1f}", 'BtwoQWK': f"{b2['qwk'][0]:.3f}", 'BtwoViol': f"{100 * b2['viol'][0]:.1f}", 'BoneQWK': f"{b1['qwk'][0]:.3f}", 'BtwoECE': f"{b2['ece'][0]:.3f}",
          'BoneECE': f"{b1['ece'][0]:.3f}", 'NTest': str(A['n_test'])}
-    cv = A['conformal'][main]; N.update({'ConfCovTen': f"{cv[1]['coverage']:.3f}", 'ConfSizeTen': f"{cv[1]['size']:.2f}", 'ConfSensTen': f"{cv[1]['ref_sens']:.3f}", 'ConfSpecTen': f"{cv[1]['ref_spec']:.3f}"})
+    cv = A['conformal'][main]; ce = A['conf_exch'][main]; N.update({'ExchCovTen': f"{ce[1]['coverage'][0]:.3f}", 'ValBAcc': f"{100 * sh[main]['valB_acc']:.1f}", 'TestAcc': f"{100 * sh[main]['test_acc']:.1f}", 'ConfCovFive': f"{cv[0]['coverage']:.3f}", 'ConfCovTwenty': f"{cv[2]['coverage']:.3f}"}); N.update({'ConfCovTen': f"{cv[1]['coverage']:.3f}", 'ConfSizeTen': f"{cv[1]['size']:.2f}", 'ConfSensTen': f"{cv[1]['ref_sens']:.3f}", 'ConfSpecTen': f"{cv[1]['ref_spec']:.3f}"})
     if 'ex_qwk' in g: N.update({'ExQWK': f"{g['ex_qwk'][0]:.3f}", 'ExAUC': f"{g['ex_auc'][0]:.3f}", 'ExBtwoQWK': f"{b2['ex_qwk'][0]:.3f}"})
     for v in S:
         key = {'morph': 'Morph', 'bce': 'Bce', 'bcedice': 'Bcedice', 'ftl': 'Ftl', 'ftlbg': 'Ftlbg'}[v]

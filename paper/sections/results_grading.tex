@@ -1,0 +1,87 @@
+\subsection{What the lesion maps look like, and how lesion evidence relates to grade}
+\label{sec:res-evidence}
+Fig.~\ref{fig:example-maps} shows the lesion maps predicted for one random test image per grade. Maps are almost empty for grade~0, contain scattered microaneurysm and exudate responses for grades~1--2, and become dense and multi-class for the higher grades. The grade-4 example also illustrates a failure mode: a large pre-retinal structure in this image attracts haemorrhage and exudate responses over a wide area, which is not a ``lesion count'' in the clinical sense (the aggregated statistics would overstate the burden). Because the maps are summarised into the evidence tensor $Z$, we can also look at the statistics directly. Fig.~\ref{fig:evidence} shows, for each lesion class and zone, the mean $\log(1+n^{(0.5)})$ over the test images of each true grade. The soft counts of haemorrhages, hard exudates and soft exudates are clearly higher for grades~2--4 than for grades~0--1 in every zone, with the largest differences in the whole-field and quadrant statistics, and are not strictly monotone between the highest grades; the central-disc statistic is smaller than the others. Microaneurysm evidence is the least discriminative class (its mean varies little with grade), consistent with its weak segmentation quality (Section~\ref{sec:res-seg}). The statistics therefore carry the signal that the rules (Eqs.~\ref{eq:r1}--\ref{eq:r4}) rely on, but they are noisy at individual-image level.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_example_maps.pdf}
+\caption{Gaussian-filtered inputs (top) and predicted lesion probability maps (bottom, $128\times128$ after max-pooling, colour = class as in Fig.~\ref{fig:ddr-lesions}) for one randomly chosen test image of each grade. The grade-4 image shows a large non-lesion structure producing wide responses.}
+\label{fig:example-maps}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_evidence.pdf}
+\caption{Mean zone-wise lesion evidence $\log(1+n^{(0.5)}_{c,z})$ by true grade (rows) and zone (columns: four quadrants Q1--Q4, central disc, whole field) on the leak-controlled test set, one panel per lesion class.}
+\label{fig:evidence}
+\end{figure}
+
+\subsection{Grading performance}
+\label{sec:res-grading}
+Table~\ref{tab:grading} and Fig.~\ref{fig:ablation} report the five-class grading results. We discuss four findings in turn.
+
+\paragraph{(1) Lesion evidence improves grading substantially.} The two models that use only the frozen image embedding (B1, B2) reach a QWK of \nBoneQWK\ and \nBtwoQWK. A model that sees \emph{only} the 120-dimensional evidence tensor (B3) reaches the same agreement (0.641) with 0.016\,M instead of 0.30\,M parameters, which says that the lesion maps contain as much grading information as a generic 1152-dimensional ImageNet embedding. Combining the two is clearly better than either alone: the naive concatenation B4 reaches 0.722, and \mname\ reaches \nMainQWK\ ($\pm\,\nMainQWKsd$ over five seeds; 95\% bootstrap interval [\nMainCIlo, \nMainCIhi]). The paired bootstrap difference between \mname\ and B1/B2/B3 is $+0.087/+0.095/+0.092$ with intervals that exclude zero by a wide margin (Table~\ref{tab:grading}). The AUC for referable DR rises from 0.865--0.867 (B1, B2) to \nMainAUC. Ablation A1, which keeps everything except the evidence tokens in the head, falls back to 0.632, i.e. to the level of B2 and \emph{not} to that of the full model, which shows that the gain comes from the evidence \emph{as input} to the head, not from the soft labels or the rule loss alone.
+
+\paragraph{(2) Evidence tokens versus naive concatenation: a small gain.} The token-based head is better than concatenating the same inputs, but only slightly: the paired difference to B4 is $+0.013$ in QWK (95\% interval [0.001, 0.025]) and to the token head without soft labels or rule loss (T0) $+0.008$ ([0.000, 0.017]). With five seeds and a single backbone, we regard this as weak evidence that the token structure helps beyond the information content of the evidence itself; its principal benefit, in our view, is interpretability (attention to $(c,z)$ tokens) rather than accuracy.
+
+\paragraph{(3) Soft ordinal labels mainly improve calibration, not agreement.} Adding Gaussian-smoothed targets (T1) changes QWK by $+0.010$ relative to T0 (seed-level SDs are 0.014), i.e. not reliably, but it reduces the expected calibration error from 0.095 to 0.058 (and to \nMainECE\ for the full model, versus \nBoneECE\ for B1 and \nBtwoECE\ for B2). This is consistent with the intended role of the soft target: it prevents the cumulative logits from saturating when adjacent grades are confused.
+
+\paragraph{(4) The rule loss gives no measurable accuracy gain on DDR.} T2 (rule loss, no soft labels) scores 0.729 versus 0.722 for T0, and the full model is within 0.001 of T1 (paired difference +0.001, interval [$-$0.008, 0.010]). The reason is visible in Section~\ref{sec:res-rule}: grade predictions of \emph{all} models are already consistent with the fitted rules in more than 94\% of cases, so there is little left to correct.
+
+\paragraph{Per-class behaviour.} Fig.~\ref{fig:grading}a shows where the errors are. Grade~0 is recognised with recall 0.98, and moderate (0.58) and proliferative DR (0.58) with precision around 0.75--0.78. Mild DR (grade~1) and severe NPDR (grade~3) are the weak classes (recall 0.04 and 0.07; F1 0.06 and 0.12): grade~1 is mostly predicted as grade~0 or~2, and grade~3 as grade~2 or~4. These are the two rarest classes (1.7\% and 4.6\% of training images for grades 3 and 1, respectively) and are defined by fine distinctions (a few microaneurysms; the 4--2--1 rule), so a low macro-F1 (\num{0.46}) is unsurprising, but it is a clear limitation. Overall, 82.5\% of the predictions are within one grade of the label, and the dominant error mode is the confusion of grade~2 with grade~0 (37\% of grade-2 images are called normal). On the six-class protocol (Table~\ref{tab:six}) accuracy is 0.734 for \mname\ versus 0.692 (B1); the quality gate separates ungradable from gradable images with AUC 0.995 for every model.
+
+\begin{table}[!htbp]
+\centering
+\caption{Per-class results of \mname\ on the leak-controlled test set (seed-averaged probabilities, 3633 images).}
+\label{tab:perclass}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ & G0 & G1 & G2 & G3 & G4 \\
+\midrule
+Support & 1880 & 163 & 1265 & 61 & 264 \\
+Precision & 0.77 & 0.12 & 0.75 & 0.67 & 0.78 \\
+Recall & 0.98 & 0.04 & 0.58 & 0.07 & 0.58 \\
+F1 & 0.86 & 0.06 & 0.66 & 0.12 & 0.66 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\input{tables/grading}
+\input{tables/six}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_ablation.pdf}
+\caption{Grading models of Table~\ref{tab:methods} (mean $\pm$ SD over five seeds): quadratic-weighted kappa, expected calibration error and rule-violation rate. Grey: baselines using the embedding and/or evidence in simple form; green: evidence-token models; blue: full \mname\ and the ablation without evidence tokens (A1).}
+\label{fig:ablation}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_grading.pdf}
+\caption{(a) Row-normalised confusion matrix of \mname\ with counts. (b) Reliability diagram (10 bins) for \mname\ and two baselines. (c) Mean conformal set size against target coverage (calibration on the validation partition); numbers give the empirical coverage on the test set, which is below the target (Section~\ref{sec:res-conf}).}
+\label{fig:grading}
+\end{figure}
+
+\subsection{Rule consistency}
+\label{sec:res-rule}
+Under the frozen rule scores, the fraction of test predictions that exceed what the lesion evidence licenses is 3.9--5.2\% for all models (Table~\ref{tab:grading}; Fig.~\ref{fig:ablation}, right). The full model has \nMainViol\% and the model without lesion evidence in the head, B2, has \nBtwoViol\%; the token model without rule loss (T0) has the highest rate (5.2\%) and the rule-loss variants (T2, full) are 0.7--0.8 percentage points lower, a small shift that is of the same order as the seed-to-seed spread (SD up to 0.8 points). We therefore cannot claim that the rule-consistency loss reduces contradictions in a meaningful way on this data. Two explanations are consistent with the numbers. First, the rules were calibrated on the training labels as necessary conditions (Eq.~\ref{eq:rulefit}), so they are permissive by construction: the threshold of each rule settles where it is hardly ever violated by true labels, and because every model has learned this association from the same evidence, very few predictions fall outside it. Second, the weakest classes (mild and severe) are rarely predicted, which removes many opportunities to violate rules defined for $y\ge1$ and $y\ge3$. Stricter, anatomically defined rules (Section~\ref{sec:limits}) or hand-specified thresholds would be needed to test the idea properly.
+
+\subsection{Calibration and conformal referral}
+\label{sec:res-conf}
+\paragraph{Calibration.} After temperature scaling on validation half~A, the ECE of the full model is \nMainECE, versus \nBoneECE\ for the cross-entropy MLP and \nBtwoECE\ for the ordinal MLP (Fig.~\ref{fig:grading}b). The reliability curves lie close to the diagonal for confidence above 0.5, with the largest deviations in sparsely populated low-confidence bins.
+
+\paragraph{Conformal sets calibrated on the DDR validation partition.} Table~\ref{tab:conformal} shows that the conformal sets calibrated on validation half~B \emph{do not} reach the nominal coverage on the test set: with $\alpha=0.05$, 0.1 and 0.2 the empirical coverage of \mname\ is \nConfCovFive, \nConfCovTen\ and \nConfCovTwenty\ (targets 0.95, 0.90, 0.80), and the other models behave similarly. This is not a failure of the method but of its assumption: the DDR validation and test partitions are \emph{not exchangeable}. Table~\ref{tab:shift} shows that the same model reaches an accuracy of \nValBAcc\% on validation half~B but \nTestAcc\% on the test set, although the class proportions are practically identical (e.g.\ 51\% versus 52\% grade~0), with similar differences in QWK and log-loss. The nonconformity scores of the calibration set are therefore systematically smaller than those of the test set, and the quantile is too optimistic. We could not determine the origin of this shift (the dataset documentation does not describe how the partitions were formed; differences in hospital, camera or annotation batch are plausible).
+
+\paragraph{Conformal sets under exchangeability.} To verify that the construction itself works, Table~\ref{tab:conf-exch} calibrates on a random half of the test set and evaluates on the other half (300 random splits). Coverage is then 0.950, \nExchCovTen\ and 0.800 at the three nominal levels, with a standard deviation of about 0.01, as the theory (Appendix~\ref{app:proofs}) predicts. In this setting the referral rule (``refer if the set contains any grade $\ge2$'') at $\alpha=0.1$ achieves a sensitivity of 0.845 and a specificity of 0.876 for the lesion-grounded model, compared with 0.882 and 0.631 for the embedding-only ordinal model B2 (and 0.871/0.813 for concatenation B4), at similar mean set sizes (1.90 versus 1.84 and 1.64): the lesion evidence makes the model's \emph{uncertainty} more informative, so that fewer healthy patients are referred at a similar sensitivity. For comparison, simply taking the arg-max grade gives a referable-DR sensitivity of 0.677 and a specificity of 0.953 (B2: 0.538 and 0.951), i.e.\ hard decisions miss a large fraction of referable cases at this operating point, which is the practical argument for set-valued outputs. We emphasise that the exchangeable check used test labels for calibration and therefore describes what would happen with a calibration set drawn from the deployment distribution; it is not a test-set result in the usual sense.
+
+\input{tables/conformal}
+\input{tables/conf_exch}
+\input{tables/shift}
+
+\subsection{Zero-shot external test}
+\label{sec:res-ext}
+Table~\ref{tab:external} gives the results of applying the DDR-trained heads to the Gaussian-filtered Kaggle set without adaptation. The transfer is poor for all models: QWK is between 0.10 and 0.23 and accuracy between 31\% and 50\% depending on the seed, with a large seed-to-seed variance (e.g.\ the QWK of the full model over the five seeds is 0.38, 0.27, 0.05, 0.28 and $-0.10$). The AUC for referable DR is 0.64--0.73, only moderately above chance. Inspection of the predictions shows that the models collapse onto grades~0 and~2: for the full model (seed 0), 41\% of the external images are predicted as grade~0, 59\% as grade~2 and essentially none as grades~1, 3 or~4, although the external set has 27\% grade-2 and 8\% grade-4 images. Three factors plausibly contribute: (i) the external images are $224\times224$, so microaneurysms and small haemorrhages are invisible and the lesion evidence is systematically underestimated; (ii) the segmentation network was trained on DDR images processed at full field of view and sees up-sampled, already-filtered inputs; (iii) the populations and cameras differ. The model with the rule loss and no soft labels (T2) has the highest mean QWK (0.227) and B2 reaches 0.215, but with five seeds and these standard deviations no ranking of models is supported. We report this negative result because it bounds the claims of the paper: \emph{within DDR}, lesion evidence adds clearly to the embedding; \emph{across datasets}, our pipeline does not generalise at this resolution, and the conformal guarantee could not be expected to hold either.
+
+\input{tables/external}
