@@ -11,6 +11,17 @@ All experiments were run on a single cloud virtual machine with four CPU cores o
 
 \paragraph{Grading heads} All heads are trained with AdamW (weight decay 0.01), cosine schedule over 60 epochs, mini-batches of 128, with learning rate $10^{-3}$ for MLPs and $5\times10^{-4}$ for the token head; the epoch with the highest quadratic-weighted kappa on validation half A (checked every three epochs) is retained. Validation is split into two halves with a fixed random permutation: half~A (1251 images) for model selection and temperature, half~B (1252 images) for conformal calibration. Each configuration is trained with five seeds (0--4); the data split is the same for all.
 
+\subsection{Research questions}
+The experiments are organised around six questions, each tied to one of the gaps of Section~\ref{sec:intro}; we state them in advance so that results are read against explicit expectations rather than selected afterwards.
+\begin{description}
+\item[RQ1 (G3, segmentation).] Does a class-weighted overlap objective with lesion-centred sampling improve small-lesion segmentation relative to plain cross-entropy and to a classical filter, and does Gaussian-filtered input matter?
+\item[RQ2 (G3, detection).] How far can segmentation-derived proposals go as lesion detectors at relaxed and strict overlap, and what limits them?
+\item[RQ3 (G1, lesion--grade coupling).] Does zone-wise lesion evidence add grading information beyond a frozen image embedding, and does the token head help beyond naive fusion?
+\item[RQ4 (G2, ordinal noise; G1, consistency).] Do Gaussian-smoothed ordinal targets and the clinical-rule consistency loss improve agreement, calibration, or the rule-violation rate?
+\item[RQ5 (G4, referral).] Do conformal sets reach their nominal coverage, and does the lesion-grounded model give better referral operating points than baselines?
+\item[RQ6 (robustness).] Do the conclusions hold under a change of population, camera and resolution (zero-shot external test), and against an end-to-end fine-tuned reference?
+\end{description}
+
 \subsection{Compared methods}
 Table~\ref{tab:methods} lists the grading models. B1--B4 share the same embedding and (where applicable) the same lesion evidence as the proposed models, so that every difference is attributable to \emph{how} lesion information is used.
 

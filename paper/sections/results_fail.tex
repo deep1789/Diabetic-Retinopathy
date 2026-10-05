@@ -1,0 +1,18 @@
+\subsection{Failure analysis}
+\label{sec:res-fail}
+Fig.~\ref{fig:failures} shows, for the four most frequent error types of \mname, one of the 15 most confident wrong predictions (chosen at random among them with a fixed seed), together with its lesion maps. They illustrate failure modes that the aggregate numbers hide, and we describe them with the caveat that four images do not characterise a distribution.
+
+\paragraph{Moderate called normal (37\% of grade-2 images).} The example has a confidence of 0.93 for ``normal'', and its lesion maps contain only a few scattered, low-intensity responses (a couple of microaneurysm and haemorrhage cells). In DDR, grade~2 can be assigned on the basis of microaneurysms and a few small haemorrhages, i.e.\ on lesions that are at or below the resolution of our segmentation network ($512^2$ for an image of about 2000 pixels). The confusion is therefore a direct consequence of the weakest component of the pipeline (microaneurysm and small-haemorrhage segmentation, Section~\ref{sec:res-seg}), and it explains why the largest class-wise gains are not to be expected from the grader but from higher-resolution lesion maps.
+
+\paragraph{Normal called moderate.} The example (confidence 0.64) has many exudate responses scattered over the posterior pole. We cannot tell from the image alone whether these are real exudates that were not graded, drusen-like structures or reflection artefacts that the segmentation network mistook for exudates; since the DDR grades were assigned on the full-resolution photograph, each possibility is plausible. This example shows how the evidence-based design transmits segmentation errors directly to the grade, and why an uncertainty-aware output (conformal sets) is meant to help: a moderate-confidence prediction like this one is the situation in which a set with several grades is preferable to a single label.
+
+\paragraph{Severe called moderate.} The grade~3 example has sparse lesion maps. The severe NPDR criteria rely on the extent of haemorrhages in four quadrants, venous beading and intraretinal microvascular abnormalities. Our evidence includes the first only through noisy haemorrhage maps, and has no representation of the other two. With only 61 test images of grade~3 and 118 in training, the head has few examples from which to learn the pattern, and recall is 0.07.
+
+\paragraph{PDR called moderate.} Proliferative DR is defined by neovascularisation, vitreous or pre-retinal haemorrhage, none of which is a segmentation class in DDR. The example shows moderate-looking exudates and a few haemorrhages. This is a structural limitation of any model that uses only the four DDR lesion classes as evidence: the image embedding must provide the missing information, which in our frozen-backbone setting it does only partially (recall of grade~4: 0.58). A segmentation class for neovascularisation, or a fine-tuned backbone, is the natural remedy.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_failures.pdf}
+\caption{Confidently wrong predictions of \mname\ on the leak-controlled test set (one example per error type, chosen at random among the 15 most confident errors of that type): Gaussian-filtered input (top) and lesion maps (bottom).}
+\label{fig:failures}
+\end{figure}

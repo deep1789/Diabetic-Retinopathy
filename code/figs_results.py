@@ -152,4 +152,24 @@ def example(seg='ftlbg'):
     fig.legend(handles=[Patch(color=LES[k], label=k) for k in CN], loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(.5, -.02), fontsize=7)
     plt.subplots_adjust(wspace=.03, hspace=.03); plt.savefig(OUT + 'fig_example_maps.pdf'); plt.close()
 
+def failures(seg='ftlbg', bb='convnext_tiny'):
+    """Confidently wrong predictions of LesionRule on the leak-controlled test set, with lesion maps."""
+    H = json.load(open(W + f'res/heads_{seg}_{bb}.json')); P = np.mean([np.array(r['probs']) for r in H['res']['Ours (full: C1+C2+C5)']], 0); yt = np.array(H['yt'])
+    meta = np.load(W + 'g_ddr_meta.npy', allow_pickle=True); sp = np.array([m[0] for m in meta]); y = np.array([m[2] for m in meta]); nm = np.array([m[1].rsplit('.', 1)[0] for m in meta])
+    seen = set(np.load(W + 'les_train_names.npy')) | set(np.load(W + 'les_valid_names.npy')); leak = np.array([n in seen for n in nm])
+    gi = np.where((sp == 'test') & (y < 5) & ~leak)[0]; assert len(gi) == len(yt) and (y[gi] == yt).all()
+    maps = np.load(W + f'g_ddr_{seg}_maps.npy', mmap_mode='r'); X = np.load(W + 'g_ddr_rgb256.npy', mmap_mode='r'); pred = P.argmax(1); conf = P.max(1)
+    kinds = [(2, 0, 'Moderate called normal'), (0, 2, 'Normal called moderate'), (3, 2, 'Severe called moderate'), (4, 2, 'PDR called moderate')]
+    cols = np.array([[27, 175, 122], [227, 73, 72], [237, 161, 0], [42, 120, 214]], np.float32); rng = np.random.default_rng(5)
+    fig, ax = plt.subplots(2, 4, figsize=(7.4, 3.4))
+    for j, (t, p, title) in enumerate(kinds):
+        idx = np.where((yt == t) & (pred == p))[0]; top = idx[np.argsort(-conf[idx])[:15]]; k = int(top[rng.integers(len(top))]); g = gi[k]
+        ax[0, j].imshow(np.array(X[g])); ax[0, j].axis('off'); ax[0, j].set_title(f'{title}\n(true {t}, pred. {p}, conf. {conf[k]:.2f})', fontsize=6.3)
+        mp = np.array(maps[g]).astype(np.float32) / 255; ov = np.zeros((128, 128, 3), np.float32)
+        for c in range(4): ov = np.maximum(ov, mp[c][..., None] * cols[c] / 255)
+        ax[1, j].imshow(ov); ax[1, j].axis('off')
+    from matplotlib.patches import Patch
+    fig.legend(handles=[Patch(color=LES[k], label=k) for k in CN], loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(.5, -.03), fontsize=7)
+    plt.subplots_adjust(wspace=.03, hspace=.12); plt.savefig(OUT + 'fig_failures.pdf'); plt.close()
+
 globals()[which](*sys.argv[2:]); print('done', which)

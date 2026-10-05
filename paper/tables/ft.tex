@@ -1,0 +1,16 @@
+\begin{table}[!htbp]
+\centering
+\caption{End-to-end fine-tuned CNN reference versus frozen-embedding models on the leak-controlled test set. The fine-tuned model is a single run (trainable parameters in millions); the others are seed averages. Intervals: 95\% bootstrap over test images.}
+\label{tab:ft}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Model & Params (M) & QWK [95\% CI] & Acc. & F1 & AUC$_{\ge2}$ & ECE \\
+\midrule
+End-to-end fine-tuned ResNet-18 (1 run, 8 epochs, $224^2$) & 11.2 & 0.700 [0.677, 0.720] & 0.718 & 0.458 & 0.891 & 0.031 \\
+\mname\ (frozen ConvNeXt-T + evidence, 5 seeds) & 0.14 (head) & 0.734 [0.714, 0.754] & 0.745 & 0.464 & 0.923 & 0.057 \\
+B2: frozen ConvNeXt-T, ordinal (5 seeds) & 0.30 (head) & 0.638 [0.616, 0.662] & 0.683 & 0.428 & 0.867 & 0.120 \\
+\bottomrule
+\end{tabular}}
+\end{table}
